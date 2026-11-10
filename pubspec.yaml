@@ -1,0 +1,33 @@
+name: revela
+description: Aplicación móvil para administrar el centro de belleza Revela.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: ^3.13.2
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_svg: ^2.2.0
+  http: ^1.6.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+          weight: 100
+        - asset: assets/fonts/Inter.ttf
+          weight: 900
+    - family: OpenSans
+      fonts:
+        - asset: assets/fonts/OpenSans.ttf
+          weight: 600
