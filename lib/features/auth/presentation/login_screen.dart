@@ -3,9 +3,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../data/auth_repository.dart';
+import '../domain/auth_session.dart';
+import 'recovery_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    required this.repository,
+    required this.onSignedIn,
+    this.notice,
+  });
+  final AuthRepository repository;
+  final ValueChanged<AuthSession> onSignedIn;
+  final String? notice;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -16,6 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _user = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
+  bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -24,25 +37,39 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _showPending({required bool recovery}) {
-    if (!recovery && !_formKey.currentState!.validate()) return;
+  Future<void> _login() async {
+    if (_loading || !_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(recovery ? 'Recuperar acceso' : 'Conexión pendiente'),
-        content: Text(
-          recovery
-              ? 'La recuperación de contraseña estará disponible cuando se conecte el servicio de la API.'
-              : 'La interfaz está lista. Falta configurar los endpoints de autenticación de la API para verificar tus credenciales.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final session = await widget.repository.login(
+        username: _user.text,
+        password: _password.text,
+      );
+      if (!mounted) return;
+      _password.clear();
+      widget.onSignedIn(session);
+    } on AuthException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () =>
+              _error = 'Ocurrió un error al iniciar sesión. Vuelve a intentar.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showRecovery() {
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (context) => const RecoveryScreen()),
     );
   }
 
@@ -115,6 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             key: const Key('username'),
                             controller: _user,
+                            enabled: !_loading,
                             autofillHints: const [AutofillHints.username],
                             autocorrect: false,
                             textInputAction: TextInputAction.next,
@@ -139,13 +167,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             key: const Key('password'),
                             controller: _password,
+                            enabled: !_loading,
                             obscureText: _obscure,
                             enableSuggestions: false,
                             autocorrect: false,
                             autofillHints: const [AutofillHints.password],
                             textInputAction: TextInputAction.done,
-                            onFieldSubmitted: (_) =>
-                                _showPending(recovery: false),
+                            onFieldSubmitted: (_) => _login(),
                             decoration: InputDecoration(
                               hintText: '**********',
                               prefixIcon: _icon('lock', 18, 20.25),
@@ -168,14 +196,38 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? 'Ingresa tu contraseña'
                                 : null,
                           ),
+                          if (_error != null || widget.notice != null) ...[
+                            const SizedBox(height: 16),
+                            Semantics(
+                              liveRegion: true,
+                              child: Text(
+                                _error ?? widget.notice!,
+                                key: const Key('login-error'),
+                                style: TextStyle(
+                                  color: _error != null
+                                      ? Theme.of(context).colorScheme.error
+                                      : AppColors.muted,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 29),
                           FilledButton(
-                            onPressed: () => _showPending(recovery: false),
-                            child: const Text('Iniciar Sesion'),
+                            onPressed: _loading ? null : _login,
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      semanticsLabel: 'Iniciando sesión',
+                                    ),
+                                  )
+                                : const Text('Iniciar Sesion'),
                           ),
                           const SizedBox(height: 10),
                           TextButton(
-                            onPressed: () => _showPending(recovery: true),
+                            onPressed: _loading ? null : _showRecovery,
                             child: const Text(
                               'Olvidé la contraseña',
                               style: TextStyle(

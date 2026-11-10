@@ -29,6 +29,11 @@ class ApiClient {
   Future<Object?> post(String path, {Object? body, String? token}) =>
       _send('POST', path, body: body, token: token);
 
+  Future<Object?> put(String path, {Object? body, String? token}) =>
+      _send('PUT', path, body: body, token: token);
+  Future<Object?> delete(String path, {Object? body, String? token}) =>
+      _send('DELETE', path, body: body, token: token);
+
   Future<Object?> _send(
     String method,
     String path, {
@@ -58,7 +63,21 @@ class ApiClient {
       await _client.send(request),
     ))().timeout(const Duration(seconds: 20));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(response.statusCode);
+      String? message;
+      try {
+        final error = jsonDecode(utf8.decode(response.bodyBytes));
+        if (error is Map && error['message'] is String) {
+          final text = error['message'] as String;
+          if (text.length < 350 &&
+              !text.contains('Exception') &&
+              !text.contains('Stack')) {
+            message = text;
+          }
+        }
+      } catch (_) {
+        /* El código HTTP sigue disponible aunque no haya JSON. */
+      }
+      throw ApiException(response.statusCode, message: message);
     }
     if (response.bodyBytes.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -68,7 +87,8 @@ class ApiClient {
 }
 
 class ApiException implements Exception {
-  const ApiException(this.statusCode);
+  const ApiException(this.statusCode, {this.message});
+  final String? message;
   final int statusCode;
   @override
   String toString() => 'La API respondió con el código $statusCode.';
