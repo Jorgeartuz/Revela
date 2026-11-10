@@ -12,6 +12,7 @@ void main() {
       title: 'Revela · Vista de diseño',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      scrollBehavior: const RevelaScrollBehavior(),
       locale: const Locale('es'),
       supportedLocales: const [Locale('es')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

@@ -1,17 +1,29 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 import '../../../core/network/api_client.dart';
 import '../../auth/domain/auth_session.dart';
 import '../domain/module.dart';
+import '../domain/record_values.dart';
 import 'preview_data.dart';
 
 class ManagementException implements Exception {
-  const ManagementException(this.message);
+  const ManagementException(this.message, {this.statusCode});
   final String message;
+  final int? statusCode;
   @override
   String toString() => message;
+}
+
+class CustomerAlreadyExistsException extends ManagementException {
+  const CustomerAlreadyExistsException(this.customer)
+    : super(
+        'Ya existe un cliente con este documento. Puedes consultar su ficha en lugar de registrarlo de nuevo.',
+        statusCode: 409,
+      );
+  final Map<String, dynamic> customer;
 }
 
 class ManagementRepository {
@@ -69,7 +81,7 @@ class ManagementRepository {
         400 || 422 =>
           e.message ?? 'Revisa los datos. El servicio no aceptó la solicitud.',
         _ => 'No se pudo completar la operación. Inténtalo nuevamente.',
-      });
+      }, statusCode: e.statusCode);
     } on TimeoutException {
       throw const ManagementException(
         'La conexión tardó demasiado. Reintenta cuando vuelva a estar disponible.',
@@ -91,25 +103,10 @@ class ManagementRepository {
   }) async {
     if (preview) {
       if (filters['previewEmpty'] == '1') return [];
-      var rows = memory[module]!
-          .map((r) => Map<String, dynamic>.from(r))
-          .toList();
-      if (filters['profesionalId'] != null) {
-        rows = rows
-            .where((r) => '${r['profesionalId']}' == filters['profesionalId'])
-            .toList();
-      }
-      if (filters['liquidacionComisionId'] != null &&
-          module == Module.commissions) {
-        rows = rows
-            .where(
-              (r) =>
-                  '${r['liquidacionComisionId'] ?? r['liquidacionId']}' ==
-                  filters['liquidacionComisionId'],
-            )
-            .toList();
-      }
-      return rows;
+      final rows = (jsonDecode(jsonEncode(memory[module])) as List).map(
+        (r) => Map<String, dynamic>.from(r as Map),
+      );
+      return filterRecords(module, rows, filters);
     }
     final query = {...filters};
     if (module == Module.professionals) {
@@ -125,22 +122,15 @@ class ManagementRepository {
         'El servicio no devolvió un listado válido.',
       );
     }
-    return data
-        .map((r) {
-          if (r is! Map<String, dynamic>) {
-            throw const ManagementException(
-              'El servicio devolvió un registro inválido.',
-            );
-          }
-          return r;
-        })
-        .where(
-          (r) =>
-              filters['profesionalId'] == null ||
-              '${r['profesionalId'] ?? (r['profesional'] is Map ? (r['profesional'] as Map)['id'] : null)}' ==
-                  filters['profesionalId'],
-        )
-        .toList();
+    final rows = data.map((r) {
+      if (r is! Map<String, dynamic>) {
+        throw const ManagementException(
+          'El servicio devolvió un registro inválido.',
+        );
+      }
+      return r;
+    }).toList();
+    return filterRecords(module, rows, filters);
   }
 
   Future<Map<String, dynamic>?> professional(int id) async {
@@ -175,6 +165,15 @@ class ManagementRepository {
                 ) +
                 1),
       };
+      if (module == Module.services || module == Module.professionals) {
+        final specialty = body['especialidad'];
+        if (specialty is int) {
+          created['especialidadId'] = specialty;
+          created['especialidad'] = memory[Module.specialties]!
+              .where((r) => r['id'] == specialty)
+              .firstOrNull;
+        }
+      }
       if (module == Module.specialties) {
         created.putIfAbsent('activa', () => true);
       }
@@ -206,9 +205,10 @@ class ManagementRepository {
         });
       }
       if (module == Module.absences && created['periodos'] is List) {
-        created.addAll(
-          Map<String, dynamic>.from((created['periodos'] as List).first as Map),
-        );
+        final periods = created['periodos'] as List;
+        if (periods.isNotEmpty) {
+          created.addAll(Map<String, dynamic>.from(periods.first as Map));
+        }
       }
       if (id == null) {
         rows.add(created);
@@ -221,8 +221,51 @@ class ManagementRepository {
     final path = id == null
         ? (module == Module.absences ? '${module.path}/masivo' : module.path)
         : '${module.path}/$id';
-    final data = await _request(id == null ? 'POST' : 'PUT', path, body: body);
-    return data is Map<String, dynamic> ? data : null;
+    try {
+      final data = await _request(
+        id == null ? 'POST' : 'PUT',
+        path,
+        body: body,
+      );
+      return data is Map<String, dynamic> ? data : null;
+    } on ManagementException catch (error) {
+      // A database error alone does not prove a duplicate. Confirm it with a read.
+      if (module == Module.customers &&
+          id == null &&
+          (error.statusCode == 400 ||
+              error.statusCode == 409 ||
+              error.statusCode == 422)) {
+        final document = body['documento']?.toString().trim();
+        if (document != null && document.isNotEmpty) {
+          final existing = await _existingCustomer(document);
+          if (existing != null) throw CustomerAlreadyExistsException(existing);
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _existingCustomer(String document) async {
+    try {
+      final data = await _request(
+        'GET',
+        'api/Clientes/${Uri.encodeComponent(document)}',
+      );
+      final candidates = data is Map<String, dynamic>
+          ? [data]
+          : data is List
+          ? data.whereType<Map<String, dynamic>>()
+          : <Map<String, dynamic>>[];
+      return candidates
+          .where(
+            (r) =>
+                r['id'] is int && r['documento']?.toString().trim() == document,
+          )
+          .firstOrNull;
+    } on ManagementException {
+      // An unavailable lookup must neither claim a duplicate nor repeat the POST.
+      return null;
+    }
   }
 
   Future<void> remove(
@@ -231,7 +274,14 @@ class ManagementRepository {
     Map<String, dynamic>? body,
   }) async {
     if (preview) {
-      memory[module]!.removeWhere((r) => r['id'] == id);
+      if (module == Module.reservations) {
+        final row = memory[module]!.where((r) => r['id'] == id).firstOrNull;
+        if (row != null) {
+          row.addAll({'estado': 3, 'motivoOtro': body?['motivoOtro']});
+        }
+      } else {
+        memory[module]!.removeWhere((r) => r['id'] == id);
+      }
       return;
     }
     await _request('DELETE', '${module.path}/$id', body: body);

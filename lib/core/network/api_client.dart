@@ -68,11 +68,7 @@ class ApiClient {
         final error = jsonDecode(utf8.decode(response.bodyBytes));
         if (error is Map && error['message'] is String) {
           final text = error['message'] as String;
-          if (text.length < 350 &&
-              !text.contains('Exception') &&
-              !text.contains('Stack')) {
-            message = text;
-          }
+          message = userFacingApiMessage(text);
         }
       } catch (_) {
         /* El código HTTP sigue disponible aunque no haya JSON. */
@@ -84,6 +80,30 @@ class ApiClient {
   }
 
   void close() => _client.close();
+}
+
+/// Only expose useful business messages, not persistence/framework diagnostics.
+String? userFacingApiMessage(String text) {
+  final message = text.trim();
+  final lower = message.toLowerCase();
+  if (lower.contains('could not save changes') ||
+      lower.contains('configure your entity type') ||
+      lower.contains('an error occurred while saving the entity changes')) {
+    return 'El servidor no pudo guardar el registro. Si los datos son correctos, contacta al administrador del centro.';
+  }
+  if (message.isEmpty ||
+      message.length >= 350 ||
+      [
+        'exception',
+        'stack',
+        'dbcontext',
+        'entityframework',
+        'sqlstate',
+        'sql server',
+      ].any(lower.contains)) {
+    return null;
+  }
+  return message;
 }
 
 class ApiException implements Exception {

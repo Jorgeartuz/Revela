@@ -80,10 +80,9 @@ flutter analyze
 flutter test
 ```
 
-Se verificaron 39 casos de contratos, permisos, formularios y persistencia simulada.
-Se compilaron y renderizaron 64 pantallas/estados con el motor de Flutter, incluyendo anchos de 393 y 320 px.
-Se ejecutaron los flujos de crear/editar/eliminar cliente y crear/revisar/cancelar reserva, sin modificar el servidor.
-El comando habitual `flutter test` está sujeto a las restricciones de procesos del entorno del asistente; la verificación de renderizado se ejecutó mediante el compilador y el motor de Flutter directamente.
+La revisión actual ejecutó 33 pruebas de la suite completa y renderizó las 92 entradas del catálogo en tres formatos (276 comprobaciones), incluidos texto ampliado y orientación horizontal. Se comprobaron los flujos de clientes, reservas y asistencia simulada sin modificar el servidor.
+
+La ejecución de pruebas en el entorno del asistente utilizó directamente el compilador y el motor de Flutter. El detalle de correcciones y límites está en [docs/REVISION_CODIGO.md](docs/REVISION_CODIGO.md).
 
 ## Organización
 

@@ -1,11 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../domain/module.dart';
+import '../domain/record_values.dart';
 
 String money(Object? value) => value is num
     ? r'$' + NumberFormat.decimalPattern('es_CO').format(value.round())
@@ -91,7 +90,10 @@ class SectionShell extends StatelessWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
-                child: child,
+                child: ScrollConfiguration(
+                  behavior: const RevelaScrollBehavior(),
+                  child: child,
+                ),
               ),
             ),
           ),
@@ -315,27 +317,11 @@ String dayLabel(Object? value, {bool preview = false}) {
     'viernes': 'Viernes',
     'sabado': 'Sábado',
   };
-  try {
-    final codes = preview
-        ? {
-            'domingo': 0,
-            'lunes': 1,
-            'martes': 2,
-            'miercoles': 3,
-            'jueves': 4,
-            'viernes': 5,
-            'sabado': 6,
-          }
-        : jsonDecode(
-            const String.fromEnvironment('WEEKDAY_MAP', defaultValue: '{}'),
-          ) as Map;
-    for (final entry in codes.entries) {
-      if ('${entry.value}' == '$value') {
-        return labels[entry.key] ?? 'Jornada laboral';
-      }
+  final codes = weekdayCodes(preview: preview);
+  for (final entry in codes.entries) {
+    if ('${entry.value}' == '$value') {
+      return labels[entry.key] ?? 'Jornada laboral';
     }
-  } on FormatException {
-    return 'Jornada laboral';
   }
   return 'Jornada laboral';
 }

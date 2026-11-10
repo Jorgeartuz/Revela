@@ -32,7 +32,7 @@ class DashboardRepository {
 
   Future<List<Map<String, dynamic>>> _list(String path) async {
     if (session.isExpired) {
-      onUnauthorized?.call();
+      scheduleMicrotask(() => onUnauthorized?.call());
       throw const DashboardException('Tu sesión ha vencido.');
     }
     try {
@@ -49,7 +49,9 @@ class DashboardRepository {
         return row;
       }).toList();
     } on ApiException catch (error) {
-      if (error.statusCode == 401) onUnauthorized?.call();
+      if (error.statusCode == 401) {
+        onUnauthorized?.call();
+      }
       throw DashboardException(
         error.statusCode == 403
             ? 'Tu cuenta no tiene acceso a esta información.'

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../domain/module.dart';
 import '../domain/form_spec.dart';
+import '../domain/record_values.dart';
 import '../domain/payload.dart';
 import '../data/management_repository.dart';
 import 'shared.dart';
 import 'module_list.dart';
+import 'record_detail.dart';
 
 class RecordFormPage extends StatefulWidget {
   const RecordFormPage({
@@ -32,12 +35,15 @@ class RecordFormPage extends StatefulWidget {
 
 class _RecordFormPageState extends State<RecordFormPage> {
   final _key = GlobalKey<FormState>();
+  final _scroll = ScrollController();
   final _values = <String, dynamic>{};
   final _controllers = <String, TextEditingController>{};
   final _options = <String, List<Map<String, dynamic>>>{};
   late final List<FieldSpec> _fields;
   bool _loading = true, _saving = false, _dirty = false;
   String? _error;
+  bool _optionsError = false;
+  Map<String, dynamic>? _existingCustomer;
   @override
   void initState() {
     super.initState();
@@ -60,6 +66,12 @@ class _RecordFormPageState extends State<RecordFormPage> {
         value =
             widget.initial?['tipoFecha'] ??
             (start != null && end != null && start != end ? 'rango' : 'dia');
+      }
+      if (f.key == 'motivoLabel' && value == null) {
+        value = absenceCodes(preview: widget.repository.preview).entries
+            .where((e) => e.value == widget.initial?['motivo'])
+            .firstOrNull
+            ?.key;
       }
       if (f.kind == InputKind.toggle) value = value ?? false;
       if (value != null) _values[f.key] = value;
@@ -87,6 +99,7 @@ class _RecordFormPageState extends State<RecordFormPage> {
       if (mounted) {
         setState(() {
           _loading = false;
+          _optionsError = false;
           _error = widget.repository.preview ? widget.initialError : null;
         });
       }
@@ -106,6 +119,7 @@ class _RecordFormPageState extends State<RecordFormPage> {
       if (mounted) {
         setState(() {
           _loading = false;
+          _optionsError = true;
           _error = errorMessage(e);
         });
       }
@@ -114,6 +128,7 @@ class _RecordFormPageState extends State<RecordFormPage> {
 
   @override
   void dispose() {
+    _scroll.dispose();
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -170,6 +185,7 @@ class _RecordFormPageState extends State<RecordFormPage> {
       return;
     }
     if ([Module.reservations, Module.closures].contains(widget.module)) {
+      setState(() => _saving = true);
       final confirmed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -182,11 +198,16 @@ class _RecordFormPageState extends State<RecordFormPage> {
           ),
         ),
       );
-      if (confirmed != true || !mounted) return;
+      if (!mounted) return;
+      if (confirmed != true) {
+        setState(() => _saving = false);
+        return;
+      }
     }
     setState(() {
       _saving = true;
       _error = null;
+      _existingCustomer = null;
     });
     try {
       await widget.repository.save(
@@ -209,7 +230,23 @@ class _RecordFormPageState extends State<RecordFormPage> {
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) setState(() => _error = errorMessage(e));
+      if (mounted) {
+        setState(() {
+          _error = errorMessage(e);
+          _existingCustomer = e is CustomerAlreadyExistsException
+              ? e.customer
+              : null;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _scroll.hasClients) {
+            _scroll.animateTo(
+              0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -256,119 +293,171 @@ class _RecordFormPageState extends State<RecordFormPage> {
           ? const Center(child: CircularProgressIndicator())
           : Form(
               key: _key,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(21, 8, 21, 32),
+              child: Column(
                 children: [
-                  if (_error != null)
-                    Semantics(liveRegion: true, child: infoBox(_error!)),
-                  if (_error != null)
-                    TextButton(
-                      onPressed: _saving
-                          ? null
-                          : () {
-                              setState(() => _loading = true);
-                              _loadOptions();
-                            },
-                      child: const Text('Reintentar carga'),
-                    ),
-                  for (final f in _fields)
-                    if (_visible(f)) ...[
-                      if (f.section != null) section(f.section!),
-                      _field(f),
-                      const SizedBox(height: 18),
-                    ],
-                  if (widget.editing &&
-                      [
-                        Module.professionals,
-                        Module.services,
-                      ].contains(widget.module)) ...[
-                    section('ESPECIALIDAD'),
-                    infoBox(
-                      '${widget.initial?['especialidad'] is Map ? (widget.initial!['especialidad'] as Map)['nombre'] ?? 'Especialidad asignada' : 'Especialidad asignada'} · Solo lectura',
-                    ),
-                  ],
-                  if (widget.editing &&
-                      widget.module == Module.professionals) ...[
-                    section('AGENDA DEL PROFESIONAL'),
-                    OutlinedButton(
-                      onPressed: () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ModuleListPage(
-                            module: Module.schedules,
-                            repository: widget.repository,
-                            professionalId: widget.initial!['id'] as int,
-                          ),
+                  Expanded(
+                    child: ScrollConfiguration(
+                      behavior: const MaterialScrollBehavior().copyWith(
+                        dragDevices: {
+                          ...const MaterialScrollBehavior().dragDevices,
+                          PointerDeviceKind.mouse,
+                        },
+                      ),
+                      child: Scrollbar(
+                        controller: _scroll,
+                        thumbVisibility: true,
+                        interactive: true,
+                        child: ListView(
+                          controller: _scroll,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(21, 8, 21, 32),
+                          children: [
+                            if (_error != null)
+                              Semantics(
+                                liveRegion: true,
+                                child: infoBox(_error!),
+                              ),
+                            if (_optionsError)
+                              TextButton(
+                                onPressed: _saving
+                                    ? null
+                                    : () {
+                                        setState(() => _loading = true);
+                                        _loadOptions();
+                                      },
+                                child: const Text('Reintentar carga'),
+                              ),
+                            if (_existingCustomer != null)
+                              TextButton(
+                                onPressed: _saving
+                                    ? null
+                                    : () => Navigator.push<bool>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => RecordDetailPage(
+                                            module: Module.customers,
+                                            row: _existingCustomer!,
+                                            repository: widget.repository,
+                                          ),
+                                        ),
+                                      ),
+                                child: const Text('Ver cliente registrado'),
+                              ),
+                            for (final f in _fields)
+                              if (_visible(f)) ...[
+                                if (f.section != null) section(f.section!),
+                                _field(f),
+                                const SizedBox(height: 18),
+                              ],
+                            if (widget.editing &&
+                                [
+                                  Module.professionals,
+                                  Module.services,
+                                ].contains(widget.module)) ...[
+                              section('ESPECIALIDAD'),
+                              infoBox(
+                                '${widget.initial?['especialidad'] is Map ? (widget.initial!['especialidad'] as Map)['nombre'] ?? 'Especialidad asignada' : 'Especialidad asignada'} · Solo lectura',
+                              ),
+                            ],
+                            if (widget.editing &&
+                                widget.module == Module.professionals) ...[
+                              section('AGENDA DEL PROFESIONAL'),
+                              OutlinedButton(
+                                onPressed: () => Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ModuleListPage(
+                                      module: Module.schedules,
+                                      repository: widget.repository,
+                                      professionalId:
+                                          widget.initial!['id'] as int,
+                                    ),
+                                  ),
+                                ),
+                                child: const Text('Configurar horario'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () => Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ModuleListPage(
+                                      module: Module.absences,
+                                      repository: widget.repository,
+                                      professionalId:
+                                          widget.initial!['id'] as int,
+                                    ),
+                                  ),
+                                ),
+                                child: const Text('Ver inasistencias'),
+                              ),
+                            ],
+                            if (widget.module == Module.specialties)
+                              infoBox(
+                                'La especialidad se crea activa. El servicio permite editar el nombre y eliminarla; la reactivación no está disponible.',
+                              ),
+                            if (widget.module == Module.reservations) ...[
+                              if (!widget.editing)
+                                infoBox(
+                                  'El centro asignará el profesional al crear la reserva. El registro de pagos aún no está habilitado.',
+                                ),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.schedule),
+                                label: const Text('Consultar disponibilidad'),
+                                onPressed: _saving ? null : _availability,
+                              ),
+                            ],
+                            if (widget.module == Module.schedules &&
+                                !widget.repository.preview)
+                              infoBox(
+                                'La configuración de los días laborales debe estar habilitada por el centro antes de guardar.',
+                              ),
+                            if (widget.module == Module.absences &&
+                                !widget.repository.preview)
+                              infoBox(
+                                'El registro requiere que el centro tenga habilitados los motivos de inasistencia.',
+                              ),
+                            const SizedBox(height: 12),
+                            if (widget.module != Module.customers)
+                              _saveButton(),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: _saving ? null : _back,
+                              child: const Text('Cancelar'),
+                            ),
+                          ],
                         ),
                       ),
-                      child: const Text('Configurar horario'),
                     ),
-                    OutlinedButton(
-                      onPressed: () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ModuleListPage(
-                            module: Module.absences,
-                            repository: widget.repository,
-                            professionalId: widget.initial!['id'] as int,
-                          ),
-                        ),
-                      ),
-                      child: const Text('Ver inasistencias'),
-                    ),
-                  ],
-                  if (widget.module == Module.specialties)
-                    infoBox(
-                      'La especialidad se crea activa. El servicio permite editar el nombre y eliminarla; la reactivación no está disponible.',
-                    ),
-                  if (widget.module == Module.reservations) ...[
-                    if (!widget.editing)
-                      infoBox(
-                        'El centro asignará el profesional al crear la reserva. El registro de pagos aún no está habilitado.',
-                      ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.schedule),
-                      label: const Text('Consultar disponibilidad'),
-                      onPressed: _saving ? null : _availability,
-                    ),
-                  ],
-                  if (widget.module == Module.schedules &&
-                      !widget.repository.preview)
-                    infoBox(
-                      'La configuración de los días laborales debe estar habilitada por el centro antes de guardar.',
-                    ),
-                  if (widget.module == Module.absences &&
-                      !widget.repository.preview)
-                    infoBox(
-                      'El registro requiere que el centro tenga habilitados los motivos de inasistencia.',
-                    ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            widget.module == Module.reservations
-                                ? 'Confirmar Reserva'
-                                : widget.module == Module.closures
-                                ? 'Revisar y crear cierre'
-                                : 'Guardar ${widget.module.singular.toLowerCase()}',
-                          ),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: _saving ? null : _back,
-                    child: const Text('Cancelar'),
-                  ),
+                  if (widget.module == Module.customers)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(21, 8, 21, 12),
+                      child: _saveButton(),
+                    ),
                 ],
               ),
             ),
     ),
   );
+  Widget _saveButton() => FilledButton(
+    onPressed: _saving ? null : _save,
+    child: _saving
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Text(
+            widget.module == Module.reservations
+                ? 'Confirmar Reserva'
+                : widget.module == Module.closures
+                ? 'Revisar y crear cierre'
+                : 'Guardar ${widget.module.singular.toLowerCase()}',
+          ),
+  );
+
   Future<void> _navigate(Module? module) async {
     if (_saving) return;
     if (_dirty &&
@@ -459,6 +548,8 @@ class _RecordFormPageState extends State<RecordFormPage> {
               children: [
                 for (final e in f.options!.entries)
                   ChoiceChip(
+                    showCheckmark: false,
+                    selectedColor: AppColors.primary.withValues(alpha: .25),
                     label: Text(
                       f.key == 'dia' ? e.value.substring(0, 3) : e.value,
                     ),
@@ -514,7 +605,9 @@ class _RecordFormPageState extends State<RecordFormPage> {
           ? ''
           : f.kind == InputKind.date
           ? dateLabel(raw)
-          : raw.substring(0, 5);
+          : timeMinutes(raw) == null
+          ? 'Hora no válida'
+          : '${(timeMinutes(raw)! ~/ 60).toString().padLeft(2, '0')}:${(timeMinutes(raw)! % 60).toString().padLeft(2, '0')}';
       return FormField<String>(
         initialValue: raw,
         validator: (_) => validateField(f, _values[f.key]),
@@ -529,19 +622,23 @@ class _RecordFormPageState extends State<RecordFormPage> {
                       context: context,
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      initialDate: initial,
+                      initialDate: initial.isBefore(DateTime(1900))
+                          ? DateTime(1900)
+                          : initial.isAfter(DateTime(2100))
+                          ? DateTime(2100)
+                          : initial,
                     );
                     if (date != null && mounted) {
                       _set(f, DateFormat('yyyy-MM-dd').format(date));
                       state.didChange(_values[f.key]?.toString());
                     }
                   } else {
-                    final pieces = (raw ?? '09:00').split(':');
+                    final minutes = timeMinutes(raw) ?? 9 * 60;
                     final time = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay(
-                        hour: int.parse(pieces[0]),
-                        minute: int.parse(pieces[1]),
+                        hour: minutes ~/ 60,
+                        minute: minutes % 60,
                       ),
                     );
                     if (time != null && mounted) {
@@ -594,8 +691,16 @@ class _RecordFormPageState extends State<RecordFormPage> {
       onChanged: (v) {
         setState(() {
           _dirty = true;
+          if (f.key == 'documento' && _existingCustomer != null) {
+            _existingCustomer = null;
+            _error = null;
+          }
           if (v.trim().isEmpty) {
-            _values.remove(f.key);
+            if (widget.editing && !f.required) {
+              _values[f.key] = null;
+            } else {
+              _values.remove(f.key);
+            }
           } else {
             _values[f.key] = f.kind == InputKind.integer
                 ? int.tryParse(v)
@@ -684,7 +789,7 @@ class RecordReviewPage extends StatelessWidget {
               ),
               subtitle: Text(
                 f.source != null
-                    ? options[f.key]!
+                    ? (options[f.key] ?? <Map<String, dynamic>>[])
                               .where((r) => r['id'] == values[f.key])
                               .map(recordName)
                               .firstOrNull ??
@@ -758,7 +863,7 @@ class OperationSuccessPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SectionShell(
     title: 'Confirmación',
-    child: Padding(
+    child: SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -41,6 +41,7 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
   }
 
   bool _busy = false;
+  bool _actionPending = false;
   String? _error;
   Map<String, dynamic> get row => widget.row;
   Future<void> _edit() async {
@@ -59,94 +60,111 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
   }
 
   Future<void> _remove() async {
-    final reservation = widget.module == Module.reservations;
-    if (!await confirmAction(
-          context,
-          title: reservation
-              ? '¿Cancelar reserva?'
-              : '¿Eliminar ${widget.module.singular.toLowerCase()}?',
-          description: reservation
-              ? 'La reserva se cancelará. Esta acción no se puede deshacer.'
-              : 'Confirma que quieres eliminar este registro. El servicio puede impedirlo si tiene información asociada.',
-          action: reservation ? 'Cancelar reserva' : 'Eliminar',
-        ) ||
-        !mounted) {
-      return;
-    }
-    Map<String, dynamic>? body;
-    if (reservation) {
-      final reason = await showDialog<String>(
-        context: context,
-        builder: (context) => const _CancellationReasonDialog(),
-      );
-      if (reason == null || !mounted) return;
-      body = {'motivoOtro': reason};
-    }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+    if (_actionPending || _busy) return;
+    _actionPending = true;
     try {
-      await widget.repository.remove(
-        widget.module,
-        row['id'] as int,
-        body: body,
-      );
-      if (!mounted) return;
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OperationSuccessPage(
-            title: reservation ? 'Reserva cancelada' : 'Registro eliminado',
-            message: 'El cambio se guardó correctamente.',
+      final reservation = widget.module == Module.reservations;
+      if (!await confirmAction(
+            context,
+            title: reservation
+                ? '¿Cancelar reserva?'
+                : '¿Eliminar ${widget.module.singular.toLowerCase()}?',
+            description: reservation
+                ? 'La reserva se cancelará. Esta acción no se puede deshacer.'
+                : 'Confirma que quieres eliminar este registro. El servicio puede impedirlo si tiene información asociada.',
+            action: reservation ? 'Cancelar reserva' : 'Eliminar',
+          ) ||
+          !mounted) {
+        return;
+      }
+      Map<String, dynamic>? body;
+      if (reservation) {
+        final reason = await showDialog<String>(
+          context: context,
+          builder: (context) => const _CancellationReasonDialog(),
+        );
+        if (reason == null || !mounted) return;
+        body = {'motivoOtro': reason};
+      }
+      setState(() {
+        _busy = true;
+        _error = null;
+      });
+      try {
+        await widget.repository.remove(
+          widget.module,
+          row['id'] as int,
+          body: body,
+        );
+        if (!mounted) return;
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OperationSuccessPage(
+              title: reservation ? 'Reserva cancelada' : 'Registro eliminado',
+              message: 'El cambio se guardó correctamente.',
+            ),
           ),
-        ),
-      );
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) setState(() => _error = errorMessage(e));
+        );
+        if (mounted) Navigator.pop(context, true);
+      } catch (e) {
+        if (mounted) setState(() => _error = errorMessage(e));
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      _actionPending = false;
     }
   }
 
   Future<void> _attendance() async {
-    if (!await confirmAction(
+    if (_actionPending || _busy) return;
+    _actionPending = true;
+    try {
+      if (!await confirmAction(
+            context,
+            title: 'Confirmar asistencia',
+            description: '¿El servicio de esta reserva fue atendido?',
+            action: 'Confirmar',
+          ) ||
+          !mounted) {
+        return;
+      }
+      if (widget.repository.preview) {
+        final stored = widget.repository.memory[Module.reservations]!
+            .where((r) => r['id'] == row['id'])
+            .firstOrNull;
+        if (stored != null) stored['estado'] = 2;
+        setState(() => row['estado'] = 2);
+        await Navigator.push<void>(
           context,
-          title: 'Confirmar asistencia',
-          description: '¿El servicio de esta reserva fue atendido?',
-          action: 'Confirmar',
-        ) ||
-        !mounted) {
-      return;
-    }
-    if (widget.repository.preview) {
-      setState(() => row['estado'] = 2);
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const OperationSuccessPage(
-            title: 'Asistencia confirmada',
-            message: 'Cambio aplicado en la vista de diseño.',
-          ),
-        ),
-      );
-    } else {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Confirmar asistencia'),
-          content: const Text(
-            'La confirmación de asistencia todavía no está habilitada para este centro. Contacta al administrador.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Entendido'),
+          MaterialPageRoute(
+            builder: (context) => const OperationSuccessPage(
+              title: 'Asistencia confirmada',
+              message: 'Cambio aplicado en la vista de diseño.',
             ),
-          ],
-        ),
-      );
+          ),
+        );
+        if (mounted) Navigator.pop(context, true);
+      } else {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Confirmar asistencia'),
+            content: const Text(
+              'La confirmación de asistencia todavía no está habilitada para este centro. Contacta al administrador.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      _actionPending = false;
     }
   }
 

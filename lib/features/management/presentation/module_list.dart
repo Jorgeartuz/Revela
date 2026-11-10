@@ -37,9 +37,16 @@ class _ModuleListPageState extends State<ModuleListPage> {
   DateTimeRange? _period;
   int? _professional;
   Future<List<Map<String, dynamic>>>? _professionals;
+  bool get _specialized => [
+    Module.reservations,
+    Module.schedules,
+    Module.absences,
+    Module.commissions,
+  ].contains(widget.module);
   @override
   void initState() {
     super.initState();
+    if (_specialized) return;
     _load();
     if (widget.module == Module.services ||
         widget.module == Module.professionals) {
@@ -84,7 +91,12 @@ class _ModuleListPageState extends State<ModuleListPage> {
   }
 
   Future<void> _refresh() async {
-    setState(_load);
+    setState(() {
+      if (_specialties != null) {
+        _specialties = widget.repository.list(Module.specialties);
+      }
+      _load();
+    });
     try {
       await _future;
     } catch (_) {}
@@ -202,7 +214,7 @@ class _ModuleListPageState extends State<ModuleListPage> {
         final all = snapshot.data ?? [];
         final rows = all.where((r) {
           final text =
-              '${recordName(r)} ${r['documento'] ?? ''} ${personName(r['cliente'])} ${personName(r['profesional'])}'
+              '${recordName(r)} ${r['documento'] ?? ''} ${r['descripcion'] ?? ''} ${personName(r['cliente'])} ${personName(r['profesional'])}'
                   .toLowerCase();
           if (!text.contains(_query.toLowerCase())) return false;
           final active = r['activo'] ?? r['estado'] ?? r['activa'];
@@ -211,7 +223,9 @@ class _ModuleListPageState extends State<ModuleListPage> {
               active != (_state == 'activos')) {
             return false;
           }
-          if (_specialty != null && '${r['especialidadId']}' != _specialty) {
+          if (_specialty != null &&
+              '${r['especialidadId'] ?? (r['especialidad'] is Map ? (r['especialidad'] as Map)['id'] : null)}' !=
+                  _specialty) {
             return false;
           }
           return true;
@@ -264,6 +278,8 @@ class _ModuleListPageState extends State<ModuleListPage> {
                     'inactivos': 'Inactivos',
                   }.entries)
                     ChoiceChip(
+                      showCheckmark: false,
+                      selectedColor: AppColors.primary.withValues(alpha: .25),
                       label: Text(option.value),
                       selected: _state == option.key,
                       onSelected: (_) => setState(() => _state = option.key),
@@ -274,9 +290,17 @@ class _ModuleListPageState extends State<ModuleListPage> {
                 widget.module == Module.professionals)
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: _specialties,
-                builder: (context, s) => s.hasData
+                builder: (context, s) => s.hasError
+                    ? infoBox(errorMessage(s.error))
+                    : s.hasData
                     ? DropdownButtonFormField<String>(
-                        initialValue: _specialty,
+                        key: ValueKey(
+                          'specialty:$_specialty:${s.data!.map((r) => r['id']).join(',')}',
+                        ),
+                        initialValue:
+                            s.data!.any((r) => '${r['id']}' == _specialty)
+                            ? _specialty
+                            : null,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Especialidad',

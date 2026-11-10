@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 abstract final class AppColors {
   static const background = Color(0xFF0B0B0F);
@@ -19,9 +20,14 @@ abstract final class AppTheme {
     colorScheme: const ColorScheme.dark(
       primary: AppColors.primary,
       onPrimary: AppColors.background,
+      secondary: AppColors.primary,
+      onSecondary: AppColors.background,
+      secondaryContainer: Color(0x2EC8A2B7),
+      onSecondaryContainer: AppColors.text,
       surface: AppColors.surface,
       onSurface: AppColors.text,
     ),
+    chipTheme: const ChipThemeData(showCheckmark: false),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surface,
@@ -51,4 +57,13 @@ abstract final class AppTheme {
       ),
     ),
   );
+}
+
+class RevelaScrollBehavior extends MaterialScrollBehavior {
+  const RevelaScrollBehavior();
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    ...super.dragDevices,
+    PointerDeviceKind.mouse,
+  };
 }

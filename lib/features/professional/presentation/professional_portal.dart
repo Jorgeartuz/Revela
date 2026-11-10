@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../home/domain/reservation.dart';
 import '../../management/data/management_repository.dart';
 import '../../management/domain/module.dart';
+import '../../management/domain/record_values.dart';
 import '../../management/presentation/module_list.dart';
 import '../../management/presentation/record_detail.dart';
 import '../../management/presentation/shared.dart';
@@ -31,7 +32,7 @@ class ProfessionalPortal extends StatefulWidget {
 
 class _ProfessionalPortalState extends State<ProfessionalPortal> {
   int _tab = 0;
-  Future<List<Map<String, dynamic>>>? _appointments;
+  Future<(Map<String, dynamic>?, List<Map<String, dynamic>>)>? _home;
 
   @override
   void initState() {
@@ -39,10 +40,29 @@ class _ProfessionalPortalState extends State<ProfessionalPortal> {
     _tab = widget.initialTab;
     widget.repository.onProfessionalTab = _navigateTab;
     if (widget.professionalId != null) {
-      _appointments = widget.repository.list(
-        Module.reservations,
-        filters: {'profesionalId': '${widget.professionalId}'},
-      );
+      _home = _loadHome();
+    }
+  }
+
+  Future<(Map<String, dynamic>?, List<Map<String, dynamic>>)>
+  _loadHome() async {
+    final profile = await widget.repository.professional(
+      widget.professionalId!,
+    );
+    final appointments = await widget.repository.list(
+      Module.reservations,
+      filters: {'profesionalId': '${widget.professionalId}'},
+    );
+    return (profile, appointments);
+  }
+
+  Future<void> _refreshHome() async {
+    if (widget.professionalId == null) return;
+    setState(() => _home = _loadHome());
+    try {
+      await _home;
+    } catch (_) {
+      /* Presented by FutureBuilder. */
     }
   }
 
@@ -50,7 +70,10 @@ class _ProfessionalPortalState extends State<ProfessionalPortal> {
     if (!mounted) return;
     final route = ModalRoute.of(context);
     Navigator.popUntil(context, (r) => r == route);
-    setState(() => _tab = tab);
+    setState(() {
+      _tab = tab;
+      if (tab == 0 && widget.professionalId != null) _home = _loadHome();
+    });
   }
 
   @override
@@ -171,7 +194,7 @@ class _ProfessionalPortalState extends State<ProfessionalPortal> {
               5,
               (i) => Expanded(
                 child: InkWell(
-                  onTap: () => setState(() => _tab = i),
+                  onTap: () => _navigateTab(i),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -296,263 +319,293 @@ class _ProfessionalPortalState extends State<ProfessionalPortal> {
         embedded: true,
       );
     }
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _appointments,
-      builder: (context, snapshot) {
-        final now = DateTime.now();
-        final rows = (snapshot.data ?? []).where((r) {
-          final d = DateTime.tryParse(r['fecha']?.toString() ?? '');
-          return d != null &&
-              d.year == now.year &&
-              d.month == now.month &&
-              d.day == now.day;
-        }).toList();
-        final states = widget.repository.preview
-            ? const ReservationStates(
-                scheduled: 0,
-                confirmed: 1,
-                attended: 2,
-                cancelled: 3,
-              )
-            : ReservationStates.configured;
-        String count(int? code) => !snapshot.hasData || code == null
-            ? '—'
-            : '${rows.where((r) => r['estado'] == code).length}';
-        final profile = widget.repository.preview
-            ? widget.repository.memory[Module.professionals]!.firstOrNull
-            : null;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(21, 22, 21, 32),
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        DateFormat(
-                          'EEEE, d MMMM',
-                          'es',
-                        ).format(now).toUpperCase(),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${now.hour < 12
-                            ? 'Buenos días'
-                            : now.hour < 18
-                            ? 'Buenas tardes'
-                            : 'Buenas noches'}, ${widget.username ?? 'Profesional'}',
-                        style: const TextStyle(
-                          fontFamily: 'OpenSans',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 22,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Cerrar sesión',
-                  onPressed: _logout,
-                  icon: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: Stack(
-                      children: [
-                        _icon('avatar_circle', 40),
-                        Positioned(
-                          left: 12.88,
-                          top: 12.88,
-                          child: Image.asset(
-                            'assets/icons/avatar_mark.png',
-                            width: 16.949,
-                            height: 16.949,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
+    return RefreshIndicator(
+      onRefresh: _refreshHome,
+      child: FutureBuilder<(Map<String, dynamic>?, List<Map<String, dynamic>>)>(
+        future: _home,
+        builder: (context, snapshot) {
+          final now = DateTime.now();
+          final rows = (snapshot.data?.$2 ?? []).where((r) {
+            final d = DateTime.tryParse(r['fecha']?.toString() ?? '');
+            return d != null &&
+                d.year == now.year &&
+                d.month == now.month &&
+                d.day == now.day;
+          }).toList();
+          final states = widget.repository.preview
+              ? const ReservationStates(
+                  scheduled: 0,
+                  confirmed: 1,
+                  attended: 2,
+                  cancelled: 3,
+                )
+              : ReservationStates.configured;
+          String count(int? code) => !snapshot.hasData || code == null
+              ? '—'
+              : '${rows.where((r) => r['estado'] == code).length}';
+          final profile = snapshot.data?.$1;
+          final upcoming =
+              rows.where((r) {
+                  final start = recordStart(r);
+                  return start != null &&
+                      start.isAfter(now) &&
+                      ((states.scheduled != null &&
+                              r['estado'] == states.scheduled) ||
+                          (states.confirmed != null &&
+                              r['estado'] == states.confirmed));
+                }).toList()
+                ..sort((a, b) => recordStart(a)!.compareTo(recordStart(b)!));
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(21, 22, 21, 32),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.background,
-                    child: Text(
-                      initials(
-                        profile == null
-                            ? widget.username ?? 'Profesional'
-                            : recordName(profile),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          profile == null
-                              ? widget.username ?? 'Profesional'
-                              : recordName(profile),
+                          DateFormat(
+                            'EEEE, d MMMM',
+                            'es',
+                          ).format(now).toUpperCase(),
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 11,
+                          ),
                         ),
-                        if (profile != null)
-                          Text(
-                            '${(profile['especialidad'] as Map)['nombre']} · Comisión ${profile['porcentaje']}%',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.muted,
+                        const SizedBox(height: 4),
+                        Text(
+                          '${now.hour < 12
+                              ? 'Buenos días'
+                              : now.hour < 18
+                              ? 'Buenas tardes'
+                              : 'Buenas noches'}, ${widget.username ?? 'Profesional'}',
+                          style: const TextStyle(
+                            fontFamily: 'OpenSans',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 22,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar sesión',
+                    onPressed: _logout,
+                    icon: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: Stack(
+                        children: [
+                          _icon('avatar_circle', 40),
+                          Positioned(
+                            left: 12.88,
+                            top: 12.88,
+                            child: Image.asset(
+                              'assets/icons/avatar_mark.png',
+                              width: 16.949,
+                              height: 16.949,
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                _stat(
-                  'stat_calendar',
-                  snapshot.hasData ? '${rows.length}' : '—',
-                  'Citas hoy',
+              const SizedBox(height: 28),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(width: 12),
-                _stat('stat_people', count(states.scheduled), 'Pendientes'),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _stat('stat_clock', '—', 'Próxima cita'),
-                const SizedBox(width: 12),
-                _stat('stat_scissors', count(states.attended), 'Atendidas hoy'),
-              ],
-            ),
-            const SizedBox(height: 28),
-            section('ACCESOS RÁPIDOS'),
-            FilledButton(
-              onPressed: () => setState(() => _tab = 1),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 18),
                 child: Row(
                   children: [
-                    const Expanded(
+                    CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.background,
                       child: Text(
-                        'Mi agenda',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        initials(
+                          profile == null
+                              ? widget.username ?? 'Profesional'
+                              : recordName(profile),
+                        ),
                       ),
                     ),
-                    _icon('professional_agenda', 26),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile == null
+                                ? widget.username ?? 'Profesional'
+                                : recordName(profile),
+                          ),
+                          if (profile != null)
+                            Text(
+                              '${nested(profile, 'especialidad')['nombre'] ?? 'Especialidad sin informar'} · Comisión ${profile['porcentaje'] ?? '—'}%',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                for (final i in [0, 1, 2])
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
-                      child: Material(
-                        color: AppColors.placeholder,
-                        borderRadius: BorderRadius.circular(14),
-                        child: InkWell(
-                          onTap: () => i == 2
-                              ? _open(Module.absences)
-                              : setState(() => _tab = i == 0 ? 2 : 3),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: Column(
-                              children: [
-                                _icon(
-                                  [
-                                    'professional_services',
-                                    'professional_schedule',
-                                    'professional_absences',
-                                  ][i],
-                                  22,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  [
-                                    'Mis servicios',
-                                    'Horario',
-                                    'Inasistencias',
-                                  ][i],
-                                  style: const TextStyle(fontSize: 10.5),
-                                ),
-                              ],
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  _stat(
+                    'stat_calendar',
+                    snapshot.hasData ? '${rows.length}' : '—',
+                    'Citas hoy',
+                  ),
+                  const SizedBox(width: 12),
+                  _stat('stat_people', count(states.scheduled), 'Pendientes'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _stat(
+                    'stat_clock',
+                    upcoming.isEmpty
+                        ? '—'
+                        : clockLabel(upcoming.first['horaInicio']),
+                    'Próxima cita',
+                  ),
+                  const SizedBox(width: 12),
+                  _stat(
+                    'stat_scissors',
+                    count(states.attended),
+                    'Atendidas hoy',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              section('ACCESOS RÁPIDOS'),
+              FilledButton(
+                onPressed: () => setState(() => _tab = 1),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Mi agenda',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      _icon('professional_agenda', 26),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  for (final i in [0, 1, 2])
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
+                        child: Material(
+                          color: AppColors.placeholder,
+                          borderRadius: BorderRadius.circular(14),
+                          child: InkWell(
+                            onTap: () => i == 2
+                                ? _open(Module.absences)
+                                : setState(() => _tab = i == 0 ? 2 : 3),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Column(
+                                children: [
+                                  _icon(
+                                    [
+                                      'professional_services',
+                                      'professional_schedule',
+                                      'professional_absences',
+                                    ][i],
+                                    22,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    [
+                                      'Mis servicios',
+                                      'Horario',
+                                      'Inasistencias',
+                                    ][i],
+                                    style: const TextStyle(fontSize: 10.5),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Próximas citas',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Próximas citas',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  TextButton(
+                    onPressed: () => setState(() => _tab = 1),
+                    child: const Text('Ver todas'),
                   ),
-                ),
+                ],
+              ),
+              if (snapshot.hasError) ...[
+                infoBox(errorMessage(snapshot.error)),
                 TextButton(
-                  onPressed: () => setState(() => _tab = 1),
-                  child: const Text('Ver todas'),
+                  onPressed: _refreshHome,
+                  child: const Text('Reintentar'),
                 ),
-              ],
-            ),
-            if (snapshot.hasError)
-              infoBox(errorMessage(snapshot.error))
-            else if (!snapshot.hasData)
-              const Center(child: CircularProgressIndicator())
-            else if (rows.isEmpty)
-              infoBox('No tienes citas para mostrar hoy.')
-            else
-              ...rows
-                  .take(3)
-                  .map(
-                    (r) => RecordCard(
-                      module: Module.reservations,
-                      row: r,
-                      preview: widget.repository.preview,
-                      onTap: () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RecordDetailPage(
-                            module: Module.reservations,
-                            row: r,
-                            repository: widget.repository,
-                            readOnly: true,
+              ] else if (!snapshot.hasData)
+                const Center(child: CircularProgressIndicator())
+              else if (upcoming.isEmpty)
+                infoBox('No hay próximas citas para mostrar hoy.')
+              else
+                ...upcoming
+                    .take(3)
+                    .map(
+                      (r) => RecordCard(
+                        module: Module.reservations,
+                        row: r,
+                        preview: widget.repository.preview,
+                        onTap: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RecordDetailPage(
+                              module: Module.reservations,
+                              row: r,
+                              repository: widget.repository,
+                              readOnly: true,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

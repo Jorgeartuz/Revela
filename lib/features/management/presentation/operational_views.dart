@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../home/domain/reservation.dart';
 import '../data/management_repository.dart';
 import '../domain/module.dart';
+import '../domain/record_values.dart';
 import 'shared.dart';
 import 'record_form.dart';
 import 'record_detail.dart';
@@ -22,11 +21,10 @@ ReservationStates statesFor(ManagementRepository repo) => repo.preview
       )
     : ReservationStates.configured;
 String clockLabel(Object? value) {
-  final parts = value?.toString().split(':') ?? [];
-  if (parts.length < 2) return '—';
-  final hour = int.tryParse(parts[0]);
-  if (hour == null) return '—';
-  return '${hour % 12 == 0 ? 12 : hour % 12}:${parts[1]} ${hour < 12 ? 'AM' : 'PM'}';
+  final time = timeMinutes(value);
+  if (time == null) return '—';
+  final hour = time ~/ 60;
+  return '${hour % 12 == 0 ? 12 : hour % 12}:${(time % 60).toString().padLeft(2, '0')} ${hour < 12 ? 'AM' : 'PM'}';
 }
 
 Record nested(Record row, String key) =>
@@ -102,18 +100,42 @@ Widget totals(List<(String, String)> items) => Row(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                item.$2,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    item.$2,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 5),
-              Text(
-                item.$1,
-                style: const TextStyle(fontSize: 10, color: AppColors.muted),
-              ),
+              if (!item.$1.contains(' '))
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      item.$1,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  item.$1,
+                  style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                ),
             ],
           ),
         ),
@@ -186,7 +208,18 @@ class _OperationalViewState extends State<OperationalView> {
   }
 
   Future<void> _refresh() async {
-    setState(_load);
+    setState(() {
+      if (_people != null) {
+        _people = widget.repository.list(Module.professionals);
+      }
+      if (_closures != null) {
+        _closures = widget.repository.list(Module.closures);
+      }
+      if (_professional != null) {
+        _profile = widget.repository.professional(_professional!);
+      }
+      _load();
+    });
     try {
       await _future;
     } catch (_) {}
@@ -232,7 +265,12 @@ class _OperationalViewState extends State<OperationalView> {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: DropdownButtonFormField<int>(
-          initialValue: _professional,
+          key: ValueKey(
+            'professional:$_professional:${s.data!.map((r) => r['id']).join(',')}',
+          ),
+          initialValue: s.data!.any((p) => p['id'] == _professional)
+              ? _professional
+              : null,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Profesional'),
           items: [
@@ -300,7 +338,7 @@ class _OperationalViewState extends State<OperationalView> {
             ],
           );
         }
-        if (!s.hasData) {
+        if (!s.hasData || s.connectionState == ConnectionState.waiting) {
           return ListView(
             children: const [
               Padding(
@@ -357,6 +395,9 @@ class _OperationalViewState extends State<OperationalView> {
                 child: Padding(
                   padding: const EdgeInsets.all(2),
                   child: ChoiceChip(
+                    padding: EdgeInsets.zero,
+                    showCheckmark: false,
+                    selectedColor: AppColors.primary.withValues(alpha: .25),
                     labelPadding: EdgeInsets.zero,
                     visualDensity: VisualDensity.compact,
                     label: Text(
@@ -393,6 +434,8 @@ class _OperationalViewState extends State<OperationalView> {
         spacing: 8,
         children: [
           ChoiceChip(
+            showCheckmark: false,
+            selectedColor: AppColors.primary.withValues(alpha: .25),
             label: const Text('Todas'),
             selected: _status == null,
             onSelected: (_) => setState(() => _status = null),
@@ -404,6 +447,8 @@ class _OperationalViewState extends State<OperationalView> {
             ('Cancelada', states.cancelled),
           ])
             ChoiceChip(
+              showCheckmark: false,
+              selectedColor: AppColors.primary.withValues(alpha: .25),
               label: Text(item.$1),
               selected: item.$2 != null && _status == item.$2,
               onSelected: item.$2 == null
@@ -431,7 +476,7 @@ class _OperationalViewState extends State<OperationalView> {
               );
               if (d != null && mounted) {
                 setState(() {
-                  _day = d;
+                  _day = DateUtils.dateOnly(d);
                   _load();
                 });
               }
@@ -551,19 +596,7 @@ class _OperationalViewState extends State<OperationalView> {
       'Sábado',
       'Domingo',
     ];
-    final Map codes = widget.repository.preview
-        ? {
-            'lunes': 1,
-            'martes': 2,
-            'miercoles': 3,
-            'jueves': 4,
-            'viernes': 5,
-            'sabado': 6,
-            'domingo': 0,
-          }
-        : jsonDecode(
-            const String.fromEnvironment('WEEKDAY_MAP', defaultValue: '{}'),
-          ) as Map;
+    final codes = weekdayCodes(preview: widget.repository.preview);
     Widget clockLine(String asset, String text, {bool muted = false}) =>
         Padding(
           padding: const EdgeInsets.only(top: 5),
@@ -765,8 +798,9 @@ class _OperationalViewState extends State<OperationalView> {
                   r['liquidacionId'] == _closure),
         )
         .toList();
-    num sum(String key) =>
-        rows.fold<num>(0, (v, r) => v + (r[key] is num ? r[key] as num : 0));
+    num? sum(String key) => rows.any((r) => r[key] is! num)
+        ? null
+        : rows.fold<num>(0, (v, r) => v + (r[key] as num));
     return [
       if (_closures != null)
         FutureBuilder<List<Record>>(
@@ -775,7 +809,12 @@ class _OperationalViewState extends State<OperationalView> {
               ? Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: DropdownButtonFormField<int>(
-                    initialValue: _closure,
+                    key: ValueKey(
+                      'closure:$_closure:${s.data!.map((r) => r['id']).join(',')}',
+                    ),
+                    initialValue: s.data!.any((r) => r['id'] == _closure)
+                        ? _closure
+                        : null,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Cierre'),
                     items: [
@@ -804,7 +843,7 @@ class _OperationalViewState extends State<OperationalView> {
       section('CONSOLIDADO DEL CIERRE'),
       panel(
         totals([
-          ('Servicios', '${sum('cantidadServicios')}'),
+          ('Servicios', '${sum('cantidadServicios') ?? '—'}'),
           ('Base/total', money(sum('base'))),
           ('Comisiones', money(sum('valorComision'))),
         ]),

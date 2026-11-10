@@ -93,6 +93,7 @@ class _RevelaAppState extends State<RevelaApp> with WidgetsBindingObserver {
     navigatorKey: _navigatorKey,
     debugShowCheckedModeBanner: false,
     theme: AppTheme.dark,
+    scrollBehavior: const RevelaScrollBehavior(),
     locale: const Locale('es'),
     supportedLocales: const [Locale('es')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,

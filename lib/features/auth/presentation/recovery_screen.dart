@@ -79,18 +79,21 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
         children: [
-          Text(
-            [
-              'RECUPERAR\nACCESO',
-              'VERIFICACIÓN\nDE SEGURIDAD',
-              'NUEVA\nCONTRASEÑA',
-              'CONTRASEÑA\nACTUALIZADA',
-            ][_stage.clamp(0, 3)],
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'OpenSans',
-              fontSize: 36,
-              fontWeight: FontWeight.w600,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              [
+                'RECUPERAR\nACCESO',
+                'VERIFICACIÓN\nDE SEGURIDAD',
+                'NUEVA\nCONTRASEÑA',
+                'CONTRASEÑA\nACTUALIZADA',
+              ][_stage.clamp(0, 3)],
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'OpenSans',
+                fontSize: 36,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 36),

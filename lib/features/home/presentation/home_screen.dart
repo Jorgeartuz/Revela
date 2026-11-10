@@ -370,10 +370,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        _tab == 0 ? 'Próximas reservas' : 'Reservas del día',
-                        style: _sectionStyle,
-                      ),
+                      child: Text('Reservas de hoy', style: _sectionStyle),
                     ),
                     if (_tab == 0)
                       TextButton(

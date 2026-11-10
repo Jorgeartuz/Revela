@@ -165,7 +165,7 @@ class _DesignGalleryState extends State<DesignGallery> {
           onTap: () => _open(
             RecordDetailPage(
               module: Module.reservations,
-              row: {...repo.memory[Module.reservations]!.first, 'estado': 3},
+              row: {..._example(Module.reservations), 'estado': 3},
               repository: repo,
             ),
           ),
@@ -175,7 +175,7 @@ class _DesignGalleryState extends State<DesignGallery> {
           onTap: () => _open(
             RecordDetailPage(
               module: Module.reservations,
-              row: {...repo.memory[Module.reservations]!.first, 'estado': 2},
+              row: {..._example(Module.reservations), 'estado': 2},
               repository: repo,
             ),
           ),

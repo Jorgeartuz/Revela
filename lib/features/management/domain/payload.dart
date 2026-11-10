@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'module.dart';
+import 'record_values.dart';
 import '../data/management_repository.dart';
 
 Map<String, dynamic> buildPayload(
@@ -25,7 +24,9 @@ Map<String, dynamic> buildPayload(
   if (module == Module.schedules) {
     final start = result['horaInicio'] as String;
     final end = result['horaFin'] as String;
-    if (start.compareTo(end) >= 0) {
+    if (timeMinutes(start) == null ||
+        timeMinutes(end) == null ||
+        timeMinutes(start)! >= timeMinutes(end)!) {
       throw const ManagementException(
         'La hora de inicio debe ser anterior a la hora de fin.',
       );
@@ -35,9 +36,11 @@ Map<String, dynamic> buildPayload(
       final lunchEnd = result['horaFinAlmuerzo'] as String?;
       if (lunchStart == null ||
           lunchEnd == null ||
-          lunchStart.compareTo(start) < 0 ||
-          lunchEnd.compareTo(end) > 0 ||
-          lunchStart.compareTo(lunchEnd) >= 0) {
+          timeMinutes(lunchStart) == null ||
+          timeMinutes(lunchEnd) == null ||
+          timeMinutes(lunchStart)! < timeMinutes(start)! ||
+          timeMinutes(lunchEnd)! > timeMinutes(end)! ||
+          timeMinutes(lunchStart)! >= timeMinutes(lunchEnd)!) {
         throw const ManagementException(
           'El almuerzo debe estar dentro de la jornada, con inicio anterior al fin.',
         );
@@ -47,21 +50,7 @@ Map<String, dynamic> buildPayload(
       result['horaFinAlmuerzo'] = null;
     }
     if (!editing) {
-      const configured = String.fromEnvironment(
-        'WEEKDAY_MAP',
-        defaultValue: '{}',
-      );
-      final map = preview
-          ? {
-              'domingo': 0,
-              'lunes': 1,
-              'martes': 2,
-              'miercoles': 3,
-              'jueves': 4,
-              'viernes': 5,
-              'sabado': 6,
-            }
-          : jsonDecode(configured) as Map;
+      final map = weekdayCodes(preview: preview);
       final code = map[result.remove('dia')];
       if (code is! int || code < 0 || code > 6) {
         throw const ManagementException(
@@ -83,17 +72,7 @@ Map<String, dynamic> buildPayload(
       );
     }
     final label = result.remove('motivoLabel');
-    final codes = preview
-        ? {'salud': 0, 'familiar': 1, 'otro': 2}
-        : {
-            'salud': int.tryParse(
-              const String.fromEnvironment('ABSENCE_HEALTH'),
-            ),
-            'familiar': int.tryParse(
-              const String.fromEnvironment('ABSENCE_FAMILY'),
-            ),
-            'otro': int.tryParse(const String.fromEnvironment('ABSENCE_OTHER')),
-          };
+    final codes = absenceCodes(preview: preview);
     final code = codes[label];
     if (code == null || code < 0 || code > 4) {
       throw const ManagementException(
