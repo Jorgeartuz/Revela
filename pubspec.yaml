@@ -19,16 +19,16 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/
-    - assets/icons/
+    - recursos/imagenes/
+    - recursos/iconos/
   fonts:
     - family: Inter
       fonts:
-        - asset: assets/fonts/Inter.ttf
+        - asset: recursos/fuentes/Inter.ttf
           weight: 100
-        - asset: assets/fonts/Inter.ttf
+        - asset: recursos/fuentes/Inter.ttf
           weight: 900
     - family: OpenSans
       fonts:
-        - asset: assets/fonts/OpenSans.ttf
+        - asset: recursos/fuentes/OpenSans.ttf
           weight: 600

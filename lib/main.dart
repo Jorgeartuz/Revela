@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'app.dart';
-import 'features/auth/presentation/recovery_screen.dart';
+import 'package:revela/aplicacion.dart';
+import 'package:revela/pantallas/autenticacion/pantalla_recuperacion.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const SplashGate(child: RevelaApp()));
+  runApp(const PantallaCargaInicial(child: AplicacionRevela()));
 }

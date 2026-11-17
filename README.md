@@ -1,99 +1,89 @@
 # Revela
 
-Aplicación Flutter/Dart para administrar un centro de belleza, basada en el proyecto Figma del curso de Programación y Tecnología Móvil de CECAR.
+Aplicación Flutter y Dart para administrar un centro de belleza. Proyecto del curso de Programación y Tecnología Móvil de CECAR.
 
-## Ejecutar la aplicación
+## Empezar a entender el código
+
+La [guía de sustentación](documentacion/GUIA_SUSTENTACION.md) explica la estructura, los archivos principales y el recorrido completo del acceso y del registro de clientes. Incluye conceptos de Dart y Flutter y preguntas de práctica.
+
+El código propio se organizó en español. Se conservaron los nombres de Flutter, de los métodos HTTP y de las claves JSON que exige el servidor.
+
+## Ejecutar
+
+Desde la carpeta del proyecto:
 
 ```powershell
 flutter pub get
 flutter run -d chrome
 ```
 
-También funciona en Flutter Phone Preview, desde la carpeta raíz del proyecto.
-Después de estos cambios conviene detener e iniciar la vista previa para recargar todos los recursos.
-El inicio de sesión usa el botón único «Iniciar Sesion». Las credenciales se ingresan manualmente; no están incluidas en el código.
-
-## Recorrer las pantallas de diseño
+Para recorrer las pantallas con datos locales de ejemplo:
 
 ```powershell
-flutter run -d chrome -t lib/main_preview.dart
+flutter run -d chrome -t lib/main_vista_previa.dart
 ```
 
-En VS Code también se puede seleccionar «Revela · Vista de diseño» en Ejecutar y depurar.
-La galería contiene listados, detalles, formularios, edición, estados vacíos y validaciones de los nueve módulos, además de recuperación, perfil profesional y confirmaciones.
-Usa datos de ejemplo y no se conecta al servidor. Las operaciones de esa entrada modifican solamente su memoria local.
-La vista de OTP utiliza el código de ejemplo `123456`; nunca modifica una contraseña real.
+En VS Code están las configuraciones «Revela · Aplicación» y «Revela · Vista de diseño».
+Después del cambio de estructura hay que detener la ejecución anterior e iniciarla de nuevo para que Flutter cargue todos los imports y recursos nuevos.
 
-## Pantallas y operaciones
+## Organización
 
-- Splash, acceso real, errores de autenticación y cierre de sesión.
-- Inicio administrativo por rol, accesos rápidos y resumen diario.
-- Clientes: listado, búsqueda, creación, detalle, edición y eliminación.
-- Profesionales: listado, filtros, creación, detalle, edición, estado y accesos a horarios e inasistencias.
-- Servicios y especialidades: listado, filtros, formularios, detalle y eliminación. Servicios incluye cambio de estado.
-- Reservas: agenda, filtros, nueva reserva, revisión de datos, consulta de disponibilidad, detalle, reagendamiento y cancelación con motivo y confirmación.
-- Horarios: listado por profesional, jornada, almuerzo, edición y eliminación.
-- Inasistencias: día o rango, motivo, observación, edición y eliminación.
-- Cierres: período, revisión, creación, listado, detalle y acceso a comisiones.
-- Comisiones: filtros, consolidado por registro y detalle de servicios asociados.
-- Profesional: inicio, agenda, servicios/comisiones, horario, inasistencias y menú personal de consulta.
-- Recuperación: correo/usuario, OTP, código inválido, nueva contraseña y resultado de ejemplo.
+Revela sigue la organización por tipo de archivo del ejemplo `smartbook_app` del profesor, con nombres en español:
 
-## API y límites conocidos
+| Proyecto del profesor | Revela | Responsabilidad |
+| --- | --- | --- |
+| `config` | `configuracion` | URL de la API, colores y tema. |
+| `models` | `modelos` | Datos y reglas de la aplicación. |
+| `routes` | `rutas` | Rutas comunes de navegación. |
+| `screens` | `pantallas` | Interfaces completas. |
+| `services/remote` | `servicios/remoto` | Consultas y cambios en la API. |
+| `services/local` | `servicios/local` | Datos de ejemplo que viven en el dispositivo. |
+| `widgets/buttons` | `componentes/botones` | Botón principal reutilizable. |
+| `widgets/fields` | `componentes/campos` | Campos de texto y contraseña. |
 
-Base: `https://api.ehily.cecar.cloud`.
-Documentación: https://api.ehily.cecar.cloud/swagger/index.html
-Diseño: https://www.figma.com/design/bTwBhqV1HM08EjdRs2ikVQ/Proyecto_Revela
+Las pantallas y los modelos se agrupan por tema dentro de su carpeta. El acceso usa `SolicitudInicioSesion`, `ServicioAutenticacion`, `SesionUsuario` y los componentes de botón y campos.
 
-Las operaciones disponibles se conectan a los contratos de Swagger. Los formularios validan los datos y muestran el rechazo del servicio antes de informar éxito.
-Las pruebas de escritura se ejecutaron con datos simulados, sin crear ni eliminar registros del servidor.
+Ver [comparación con el proyecto del profesor](documentacion/ESTRUCTURA_PROFESOR.md) y [guía de sustentación](documentacion/GUIA_SUSTENTACION.md).
 
-| Función | Estado del contrato |
+## API
+
+La URL está en `lib/configuracion/configuracion_api.dart`. Puede sustituirse al ejecutar Flutter:
+
+```powershell
+flutter run -d chrome --dart-define=API_BASE_URL=https://servidor
+```
+
+- Base actual: `https://api.ehily.cecar.cloud`.
+- [Documentación del servidor](https://api.ehily.cecar.cloud/swagger/index.html).
+- [Diseño del proyecto](https://www.figma.com/design/bTwBhqV1HM08EjdRs2ikVQ/Proyecto_Revela).
+
+`ServicioAutenticacion` envía el acceso y crea `SesionUsuario`. `ServicioGestion` usa la sesión para operar sobre los módulos. `ClienteApi` es el único responsable de la comunicación HTTP.
+
+Las credenciales se escriben manualmente y el token se conserva en memoria. Las pruebas utilizan respuestas simuladas.
+
+## Vista previa y límites del servidor
+
+`ServicioGestion.vistaPrevia()` utiliza memoria local y no escribe en el servidor. El catálogo tiene 92 entradas, incluidas variantes, diálogos y versiones anteriores; no son 92 páginas independientes. El OTP de ejemplo es `123456`.
+
+| Función | Situación |
 | --- | --- |
-| Acceso de Gestor | Conectado. El token permanece en memoria y se elimina al salir o vencer. |
-| Perfil profesional real | Pantallas creadas. Falta confirmar el nombre del rol y el claim con su ID antes de habilitar el acceso. |
-| Recuperación / OTP / nueva contraseña | Pantallas creadas y recorrido de ejemplo disponible. Swagger no publica endpoints para efectuar la operación real. |
-| Confirmar asistencia | Diálogo creado. El servidor no documenta una ruta para cambiar ese estado; no se envía una solicitud inventada. |
-| Estados de reservas | Sus números no tienen equivalencia documentada. Se muestran nombres e indicadores solamente con valores confirmados. |
-| Crear horarios | Formulario y contrato creados. Guardar requiere confirmar la equivalencia numérica de los días. Edición de jornadas existentes usa su ID. |
-| Guardar inasistencias | Formularios y contrato creados. Requiere confirmar los códigos de los motivos. |
-| Reactivar especialidades | La API permite editar el nombre y eliminar; no documenta la reactivación. |
-| Medio de pago | La API de reservas no incluye ese dato; no se informa como registrado. |
+| Acceso Gestor | Conectado a la API. |
+| Recuperación y cambio de contraseña | Pantallas disponibles; faltan endpoints para la operación real. |
+| Confirmación de asistencia | Funciona en la galería; falta una ruta documentada para el servidor real. |
+| Rol e ID del profesional | Requieren el nombre del rol y el claim confirmados del servidor. |
+| Días, motivos y estados | Requieren sus códigos confirmados. Los ejemplos no se adoptan como contrato real. |
+| Reactivar especialidades | La API no documenta esta operación. |
+| Medio de pago de reservas | La API no incluye este campo. |
 
-## Configuración del servidor
+Cuando el responsable del servidor los confirme, pueden configurarse `PROFESSIONAL_ROLE`, `PROFESSIONAL_ID_CLAIM`, `WEEKDAY_MAP`, `ABSENCE_HEALTH`, `ABSENCE_FAMILY`, `ABSENCE_OTHER`, `RESERVA_PROGRAMADA`, `RESERVA_CONFIRMADA`, `RESERVA_ATENDIDA` y `RESERVA_CANCELADA` mediante `--dart-define`.
 
-La URL base puede sustituirse con `--dart-define=API_BASE_URL=https://servidor`.
-Cuando el responsable del servidor confirme los valores, pueden establecerse:
-
-- `PROFESSIONAL_ROLE`: nombre exacto del rol profesional.
-- `PROFESSIONAL_ID_CLAIM`: claim del JWT que contiene el ID profesional.
-- `WEEKDAY_MAP`: JSON que relaciona domingo/lunes/martes/miercoles/jueves/viernes/sabado con sus códigos confirmados.
-- `ABSENCE_HEALTH`, `ABSENCE_FAMILY`, `ABSENCE_OTHER`: códigos confirmados de motivos.
-- `RESERVA_PROGRAMADA`, `RESERVA_CONFIRMADA`, `RESERVA_ATENDIDA`, `RESERVA_CANCELADA`: códigos confirmados de estado.
-
-Los valores de demostración se usan exclusivamente en la galería. No se adoptan como contratos reales.
-
-## Verificación
+## Verificar
 
 ```powershell
 flutter analyze
 flutter test
 ```
 
-La revisión actual ejecutó 33 pruebas de la suite completa y renderizó las 92 entradas del catálogo en tres formatos (276 comprobaciones), incluidos texto ampliado y orientación horizontal. Se comprobaron los flujos de clientes, reservas y asistencia simulada sin modificar el servidor.
+La suite comprende 37 pruebas de acceso, sesión, formularios, filtros y flujos de gestión. También se han comprobado las pantallas mediante el motor de Flutter, con datos de ejemplo y distintos tamaños. Las pruebas no modifican registros de producción.
 
-La ejecución de pruebas en el entorno del asistente utilizó directamente el compilador y el motor de Flutter. El detalle de correcciones y límites está en [docs/REVISION_CODIGO.md](docs/REVISION_CODIGO.md).
-
-## Organización
-
-`lib/features/auth`: acceso, sesión, splash y recuperación.
-`lib/features/home`: inicio administrativo y resumen diario.
-`lib/features/management`: módulos, repositorio, formularios, detalles y confirmaciones.
-`lib/features/professional`: portal personal de consulta.
-`lib/features/preview`: galería independiente con datos de ejemplo.
-`lib/core`: tema, configuración y cliente HTTP.
-`assets`: recursos locales de Figma y fuentes con sus licencias.
-
-## Revisión completa del archivo Figma
-
-El inventario de los 92 marcos está en `docs/FIGMA_INVENTORY.md`. Incluye variantes y versiones anteriores. En la entrada de diseño, el botón **Ver los 92 marcos de Figma** permite abrir cada equivalente actual por su nombre y nodo. Se añadieron vistas específicas para la agenda, el horario semanal, las inasistencias, los servicios personales y el consolidado de comisiones.
+Más información: [inventario de Figma](documentacion/INVENTARIO_FIGMA.md), [cobertura de pantallas](documentacion/COBERTURA_PANTALLAS.md) y [revisión de código](documentacion/REVISION_CODIGO.md).

@@ -12,7 +12,7 @@
       "name": "Revela · Vista de diseño",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main_preview.dart",
+      "program": "lib/main_vista_previa.dart",
       "deviceId": "chrome"
     }
   ]
