@@ -8,49 +8,49 @@ Revela es una aplicación Flutter para administrar un centro de belleza. Permite
 
 ## 2. Cómo están organizadas las carpetas
 
-Se sigue el esquema por tipo de archivo del proyecto `smartbook_app` del profesor. Los nombres se mantienen en español:
+Se sigue el esquema por tipo de archivo del proyecto `smartbook_app` del profesor. Las carpetas principales usan los nombres del ejemplo:
 
 | Proyecto del profesor | Revela | Responsabilidad |
 | --- | --- | --- |
-| `config` | `configuracion` | URL de la API, colores y tema. |
-| `models` | `modelos` | Datos y reglas de la aplicación. |
-| `routes` | `rutas` | Rutas comunes de navegación. |
-| `screens` | `pantallas` | Interfaces completas. |
-| `services/remote` | `servicios/remoto` | Consultas y cambios en la API. |
-| `services/local` | `servicios/local` | Datos de ejemplo que viven en el dispositivo. |
-| `widgets/buttons` | `componentes/botones` | Botón principal reutilizable. |
-| `widgets/fields` | `componentes/campos` | Campos de texto y contraseña. |
+| `config` | `config` | URL de la API, colores y tema. |
+| `models` | `models` | Datos y reglas de la aplicación. |
+| `routes` | `routes` | Rutas comunes de navegación. |
+| `screens` | `screens` | Interfaces completas. |
+| `services/remote` | `services/remote` | Consultas y cambios en la API. |
+| `services/local` | `services/local` | Datos de ejemplo que viven en el dispositivo. |
+| `widgets/buttons` | `widgets/botones` | Botón principal reutilizable. |
+| `widgets/fields` | `widgets/campos` | Campos de texto y contraseña. |
 
 ```text
 lib/
   main.dart
   main_vista_previa.dart
   aplicacion.dart
-  configuracion/
+  config/
     configuracion_api.dart
     tema_aplicacion.dart
-  modelos/
+  models/
     login/                       Solicitud, sesión y rol del usuario.
     inicio/                      Reservas y estados.
     gestion/                     Módulos, campos y preparación de datos.
     profesional/                 Perfil y datos relacionados.
-  rutas/
+  routes/
     rutas_aplicacion.dart
-  pantallas/
+  screens/
     autenticacion/
     inicio/
     gestion/
     profesional/
     vista_previa/
-  servicios/
-    remoto/
+  services/
+    remote/
       cliente_api.dart
       servicio_autenticacion.dart
       servicio_inicio.dart
       servicio_gestion.dart
     local/
       datos_ejemplo.dart
-  componentes/
+  widgets/
     botones/boton_principal.dart
     campos/campo_texto.dart
     campos/campo_contrasena.dart
@@ -60,7 +60,7 @@ documentacion/                   Guías e inventario de pantallas.
 test/                            Pruebas automáticas.
 ```
 
-Para encontrar un cambio, pregunta qué responsabilidad tiene: una interfaz completa va en `pantallas`; un control reutilizable, en `componentes`; los datos y reglas, en `modelos`; las solicitudes al servidor, en `servicios/remoto`.
+Para encontrar un cambio, pregunta qué responsabilidad tiene: una interfaz completa va en `screens`; un control reutilizable, en `widgets`; los datos y reglas, en `models`; las solicitudes al servidor, en `services/remote`.
 
 `lib`, `test`, `android`, `ios`, `web`, `main`, `pubspec.yaml` y los métodos de Flutter conservan sus nombres por las convenciones y herramientas del framework. Los nombres del código propio se escriben en español sin tildes.
 
@@ -68,10 +68,10 @@ Para encontrar un cambio, pregunta qué responsabilidad tiene: una interfaz comp
 
 1. `lib/main.dart`: prepara Flutter y abre la pantalla de carga inicial.
 2. `lib/aplicacion.dart`: decide entre el acceso y una sesión iniciada.
-3. `lib/pantallas/autenticacion/pantalla_inicio_sesion.dart`: recoge usuario y contraseña.
-4. `lib/servicios/remoto/servicio_autenticacion.dart`: envía el acceso al servidor.
-5. `lib/servicios/remoto/cliente_api.dart`: explica cómo se construye y se procesa una solicitud HTTP.
-6. `lib/pantallas/gestion/pantalla_formulario.dart`: muestra cómo se valida y se guarda un registro.
+3. `lib/screens/autenticacion/pantalla_inicio_sesion.dart`: recoge usuario y contraseña.
+4. `lib/services/remote/servicio_autenticacion.dart`: envía el acceso al servidor.
+5. `lib/services/remote/cliente_api.dart`: explica cómo se construye y se procesa una solicitud HTTP.
+6. `lib/screens/gestion/pantalla_formulario.dart`: muestra cómo se valida y se guarda un registro.
 
 ## 4. Recorrido completo del inicio de sesión
 
@@ -93,7 +93,7 @@ Si los datos son rechazados, se muestra un mensaje y se permite reintentar. Al s
 3. Los controladores guardan el texto visible; `_valores` reúne los datos que se preparan para enviar.
 4. Al pulsar **Guardar cliente**, `_guardar()` pide al formulario que valide sus campos.
 5. `validarCampo()` devuelve `null` cuando el valor es válido, o un mensaje cuando hay un problema.
-6. `prepararDatosEnvio()` transforma los valores al formato requerido por el módulo.
+6. `prepararDatosEnvio()` transforma los valores al formato requerido. Para clientes utiliza `Cliente.fromJson()` y `Cliente.toJson()`; para citas construye `SolicitudReserva`.
 7. `ServicioGestion.guardar()` utiliza `POST` para crear y `PUT` cuando recibe el identificador de un registro existente.
 8. `ClienteApi` realiza la solicitud con el token de la sesión.
 9. Si el servidor acepta la operación, se abre `PantallaOperacionExitosa` y se actualiza el listado al volver.
@@ -183,7 +183,7 @@ La recuperación de contraseña, la asistencia real y el registro del pago de re
 ## 11. Propuesta de sustentación de cinco minutos
 
 1. **Objetivo:** explicar qué administra Revela y quién la utiliza.
-2. **Estructura:** mostrar `configuracion`, `modelos`, `rutas`, `pantallas`, `servicios` y `componentes`, comparándolos con el ejemplo del profesor.
+2. **Estructura:** mostrar `config`, `models`, `routes`, `screens`, `services` y `widgets`, comparándolos con el ejemplo del profesor.
 3. **Acceso:** seguir el recorrido desde `PantallaInicioSesion` hasta `SolicitudInicioSesion`, `ServicioAutenticacion`, `SesionUsuario` y `AplicacionRevela`.
 4. **Clientes:** mostrar el formulario, su validación y el método `guardar` del servicio.
 5. **Calidad y alcance:** explicar las pruebas y cuáles operaciones dependen todavía del servidor.
@@ -212,8 +212,12 @@ El recorrido es el mismo: **pantalla → modelo de solicitud → servicio → AP
 
 En Revela, `pantalla_inicio_sesion.dart` recoge los datos; `SolicitudInicioSesion` prepara el JSON; `ServicioAutenticacion` envía la solicitud mediante `ClienteApi`; `SesionUsuario` representa la respuesta con el token y el vencimiento.
 
-`BotonPrincipal`, `CampoTexto` y `CampoContrasena` están en `componentes` y son utilizados por la pantalla de acceso. `CampoContrasena` se encarga de mostrar u ocultar el texto; la pantalla conserva la validación de acceso y la llamada al servicio.
+`BotonPrincipal`, `CampoTexto` y `CampoContrasena` están en `widgets` y son utilizados por la pantalla de acceso. `CampoContrasena` se encarga de mostrar u ocultar el texto; la pantalla conserva la validación de acceso y la llamada al servicio.
 
-`RutasAplicacion` centraliza la ruta de recuperación y está conectada al `MaterialApp`. El cambio entre acceso e inicio depende de la sesión en `aplicacion.dart`. Los formularios y detalles reciben el módulo, el servicio y el registro al abrirse mediante `MaterialPageRoute`.
+`RutasAplicacion` centraliza recuperación, listados, formularios y detalles y está conectada al `MaterialApp`. Las clases `ArgumentosListado`, `ArgumentosFormulario` y `ArgumentosDetalle` describen qué recibe cada destino. El cambio entre acceso e inicio depende de la sesión en `aplicacion.dart`.
 
-`servicios/local/datos_ejemplo.dart` prepara los registros de la galería; no guarda una sesión entre ejecuciones. La sesión real continúa en memoria mientras se usa la aplicación.
+`services/local/datos_ejemplo.dart` prepara los registros de la galería; no guarda una sesión entre ejecuciones. La sesión real continúa en memoria mientras se usa la aplicación.
+
+## 14. Estudiar con las diapositivas
+
+La [guía de metodología de clase](METODOLOGIA_CLASE.md) relaciona el código con las páginas del material de Dart, Flutter y API REST. Empieza por el modelo `Cliente`, sigue la solicitud de acceso y termina con los argumentos de navegación y la creación de una reserva.

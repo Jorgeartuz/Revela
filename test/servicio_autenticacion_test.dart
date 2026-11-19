@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:revela/servicios/remoto/cliente_api.dart';
-import 'package:revela/servicios/remoto/servicio_autenticacion.dart';
-import 'package:revela/modelos/login/sesion_usuario.dart';
+import 'package:revela/services/remote/cliente_api.dart';
+import 'package:revela/services/remote/servicio_autenticacion.dart';
+import 'package:revela/models/login/sesion_usuario.dart';
 
 void main() {
   test('Envía el contrato real sin modificar la contraseña y lee el rol del JWT', () async {

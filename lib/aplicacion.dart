@@ -1,20 +1,19 @@
-import 'package:revela/rutas/rutas_aplicacion.dart';
+import 'package:revela/routes/rutas_aplicacion.dart';
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'package:revela/configuracion/configuracion_api.dart';
-import 'package:revela/servicios/remoto/cliente_api.dart';
-import 'package:revela/configuracion/tema_aplicacion.dart';
-import 'package:revela/servicios/remoto/servicio_autenticacion.dart';
-import 'package:revela/modelos/login/sesion_usuario.dart';
-import 'package:revela/pantallas/autenticacion/pantalla_inicio_sesion.dart';
-import 'package:revela/pantallas/inicio/pantalla_inicio.dart';
-import 'package:revela/servicios/remoto/servicio_inicio.dart';
+import 'package:revela/config/configuracion_api.dart';
+import 'package:revela/services/remote/cliente_api.dart';
+import 'package:revela/config/tema_aplicacion.dart';
+import 'package:revela/services/remote/servicio_autenticacion.dart';
+import 'package:revela/models/login/sesion_usuario.dart';
+import 'package:revela/screens/autenticacion/pantalla_inicio_sesion.dart';
+import 'package:revela/screens/inicio/pantalla_inicio.dart';
+import 'package:revela/services/remote/servicio_inicio.dart';
 
-/// Punto central: decide si se muestra el acceso o el inicio de una sesión válida.
 class AplicacionRevela extends StatefulWidget {
   const AplicacionRevela({
     super.key,
@@ -49,7 +48,6 @@ class _EstadoAplicacionRevela extends State<AplicacionRevela>
         );
   }
 
-  /// Guarda la sesión recibida y programa su cierre cuando venza el token.
   void _sesionIniciada(SesionUsuario sesion) {
     if (!mounted) return;
     _temporizadorSesion?.cancel();
@@ -67,7 +65,6 @@ class _EstadoAplicacionRevela extends State<AplicacionRevela>
     );
   }
 
-  /// Regresa al acceso, cierra las pantallas abiertas y borra la sesión en memoria.
   void _cerrarSesion({bool expired = false}) {
     if (!mounted) return;
     _temporizadorSesion?.cancel();

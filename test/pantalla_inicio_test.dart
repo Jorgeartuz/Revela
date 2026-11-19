@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:revela/servicios/remoto/cliente_api.dart';
-import 'package:revela/configuracion/tema_aplicacion.dart';
-import 'package:revela/modelos/login/sesion_usuario.dart';
-import 'package:revela/modelos/login/rol_usuario.dart';
-import 'package:revela/servicios/remoto/servicio_inicio.dart';
-import 'package:revela/servicios/remoto/servicio_gestion.dart';
-import 'package:revela/pantallas/inicio/pantalla_inicio.dart';
+import 'package:revela/services/remote/cliente_api.dart';
+import 'package:revela/config/tema_aplicacion.dart';
+import 'package:revela/models/login/sesion_usuario.dart';
+import 'package:revela/models/login/rol_usuario.dart';
+import 'package:revela/services/remote/servicio_inicio.dart';
+import 'package:revela/services/remote/servicio_gestion.dart';
+import 'package:revela/screens/inicio/pantalla_inicio.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 SesionUsuario sesion(String? rol) => SesionUsuario(

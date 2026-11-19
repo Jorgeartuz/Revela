@@ -6,7 +6,11 @@ Aplicación Flutter y Dart para administrar un centro de belleza. Proyecto del c
 
 La [guía de sustentación](documentacion/GUIA_SUSTENTACION.md) explica la estructura, los archivos principales y el recorrido completo del acceso y del registro de clientes. Incluye conceptos de Dart y Flutter y preguntas de práctica.
 
-El código propio se organizó en español. Se conservaron los nombres de Flutter, de los métodos HTTP y de las claves JSON que exige el servidor.
+Las carpetas principales de lib siguen el ejemplo del profesor: config, models, routes, screens, services y widgets. Los archivos y nombres propios del código conservan el español. Se conservaron los nombres de Flutter, de los métodos HTTP y de las claves JSON que exige el servidor.
+
+## Metodología de clase
+
+La adaptación al material de Dart, Flutter y API REST está explicada en [METODOLOGIA_CLASE.md](documentacion/METODOLOGIA_CLASE.md), con referencias a las páginas de los PDF y ejemplos reales de Revela. Incluye modelos `fromJson`/`toJson`, servicios asíncronos, selectores con ID entero, argumentos de navegación y componentes reutilizables.
 
 ## Ejecutar
 
@@ -28,18 +32,18 @@ Después del cambio de estructura hay que detener la ejecución anterior e inici
 
 ## Organización
 
-Revela sigue la organización por tipo de archivo del ejemplo `smartbook_app` del profesor, con nombres en español:
+Revela sigue la organización por tipo de archivo del ejemplo `smartbook_app` del profesor, con los nombres de carpetas del ejemplo:
 
 | Proyecto del profesor | Revela | Responsabilidad |
 | --- | --- | --- |
-| `config` | `configuracion` | URL de la API, colores y tema. |
-| `models` | `modelos` | Datos y reglas de la aplicación. |
-| `routes` | `rutas` | Rutas comunes de navegación. |
-| `screens` | `pantallas` | Interfaces completas. |
-| `services/remote` | `servicios/remoto` | Consultas y cambios en la API. |
-| `services/local` | `servicios/local` | Datos de ejemplo que viven en el dispositivo. |
-| `widgets/buttons` | `componentes/botones` | Botón principal reutilizable. |
-| `widgets/fields` | `componentes/campos` | Campos de texto y contraseña. |
+| `config` | `config` | URL de la API, colores y tema. |
+| `models` | `models` | Datos y reglas de la aplicación. |
+| `routes` | `routes` | Rutas comunes de navegación. |
+| `screens` | `screens` | Interfaces completas. |
+| `services/remote` | `services/remote` | Consultas y cambios en la API. |
+| `services/local` | `services/local` | Datos de ejemplo que viven en el dispositivo. |
+| `widgets/buttons` | `widgets/botones` | Botón principal reutilizable. |
+| `widgets/fields` | `widgets/campos` | Campos de texto y contraseña. |
 
 Las pantallas y los modelos se agrupan por tema dentro de su carpeta. El acceso usa `SolicitudInicioSesion`, `ServicioAutenticacion`, `SesionUsuario` y los componentes de botón y campos.
 
@@ -47,7 +51,7 @@ Ver [comparación con el proyecto del profesor](documentacion/ESTRUCTURA_PROFESO
 
 ## API
 
-La URL está en `lib/configuracion/configuracion_api.dart`. Puede sustituirse al ejecutar Flutter:
+La URL está en `lib/config/configuracion_api.dart`. Puede sustituirse al ejecutar Flutter:
 
 ```powershell
 flutter run -d chrome --dart-define=API_BASE_URL=https://servidor
@@ -84,6 +88,6 @@ flutter analyze
 flutter test
 ```
 
-La suite comprende 37 pruebas de acceso, sesión, formularios, filtros y flujos de gestión. También se han comprobado las pantallas mediante el motor de Flutter, con datos de ejemplo y distintos tamaños. Las pruebas no modifican registros de producción.
+La suite comprende 57 pruebas de acceso, sesión, formularios, filtros y flujos de gestión. También se han comprobado las pantallas mediante el motor de Flutter, con datos de ejemplo y distintos tamaños. Las pruebas no modifican registros de producción.
 
 Más información: [inventario de Figma](documentacion/INVENTARIO_FIGMA.md), [cobertura de pantallas](documentacion/COBERTURA_PANTALLAS.md) y [revisión de código](documentacion/REVISION_CODIGO.md).

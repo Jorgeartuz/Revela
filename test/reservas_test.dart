@@ -5,15 +5,15 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:revela/configuracion/tema_aplicacion.dart';
-import 'package:revela/modelos/gestion/modulo_gestion.dart';
-import 'package:revela/modelos/gestion/datos_para_api.dart';
-import 'package:revela/modelos/login/sesion_usuario.dart';
-import 'package:revela/servicios/remoto/cliente_api.dart';
-import 'package:revela/pantallas/gestion/pantalla_formulario.dart';
-import 'package:revela/pantallas/gestion/pantalla_revision_datos.dart';
-import 'package:revela/pantallas/gestion/pantalla_operacion_exitosa.dart';
-import 'package:revela/servicios/remoto/servicio_gestion.dart';
+import 'package:revela/config/tema_aplicacion.dart';
+import 'package:revela/models/gestion/modulo_gestion.dart';
+import 'package:revela/models/gestion/datos_para_api.dart';
+import 'package:revela/models/login/sesion_usuario.dart';
+import 'package:revela/services/remote/cliente_api.dart';
+import 'package:revela/screens/gestion/pantalla_formulario.dart';
+import 'package:revela/screens/gestion/pantalla_revision_datos.dart';
+import 'package:revela/screens/gestion/pantalla_operacion_exitosa.dart';
+import 'package:revela/services/remote/servicio_gestion.dart';
 
 void main() {
   test(

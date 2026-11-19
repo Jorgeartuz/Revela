@@ -6,9 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:revela/aplicacion.dart';
-import 'package:revela/servicios/remoto/cliente_api.dart';
-import 'package:revela/servicios/remoto/servicio_autenticacion.dart';
-import 'package:revela/servicios/remoto/servicio_inicio.dart';
+import 'package:revela/services/remote/cliente_api.dart';
+import 'package:revela/services/remote/servicio_autenticacion.dart';
+import 'package:revela/services/remote/servicio_inicio.dart';
 
 Future<void> enterCredentials(WidgetTester tester) async {
   await tester.enterText(find.byKey(const Key('username')), 'usuario');

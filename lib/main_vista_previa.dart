@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'package:revela/configuracion/tema_aplicacion.dart';
-import 'package:revela/pantallas/vista_previa/galeria_pantallas.dart';
+import 'package:revela/config/tema_aplicacion.dart';
+import 'package:revela/screens/vista_previa/galeria_pantallas.dart';
 
-/// Entrada separada de diseño. No inicia sesión ni accede a la API.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(

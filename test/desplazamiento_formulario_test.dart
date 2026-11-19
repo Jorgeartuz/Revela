@@ -2,10 +2,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revela/configuracion/tema_aplicacion.dart';
-import 'package:revela/servicios/remoto/servicio_gestion.dart';
-import 'package:revela/modelos/gestion/modulo_gestion.dart';
-import 'package:revela/pantallas/gestion/pantalla_formulario.dart';
+import 'package:revela/config/tema_aplicacion.dart';
+import 'package:revela/services/remote/servicio_gestion.dart';
+import 'package:revela/models/gestion/modulo_gestion.dart';
+import 'package:revela/screens/gestion/pantalla_formulario.dart';
 
 void main() {
   testWidgets(

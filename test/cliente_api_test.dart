@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:revela/servicios/remoto/cliente_api.dart';
+import 'package:revela/services/remote/cliente_api.dart';
 
 void main() {
   test('Conserva el prefijo de API y decodifica JSON', () async {

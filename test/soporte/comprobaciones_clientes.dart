@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:revela/servicios/remoto/cliente_api.dart';
-import 'package:revela/modelos/login/sesion_usuario.dart';
-import 'package:revela/servicios/remoto/servicio_gestion.dart';
-import 'package:revela/modelos/gestion/modulo_gestion.dart';
+import 'package:revela/services/remote/cliente_api.dart';
+import 'package:revela/models/login/sesion_usuario.dart';
+import 'package:revela/services/remote/servicio_gestion.dart';
+import 'package:revela/models/gestion/modulo_gestion.dart';
 
 Future<int> comprobarRegistroClientes() async {
   var checks = 0;
