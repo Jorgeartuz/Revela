@@ -88,6 +88,6 @@ flutter analyze
 flutter test
 ```
 
-La suite comprende 57 pruebas de acceso, sesión, formularios, filtros y flujos de gestión. También se han comprobado las pantallas mediante el motor de Flutter, con datos de ejemplo y distintos tamaños. Las pruebas no modifican registros de producción.
+La suite comprende 60 pruebas de acceso, sesión, formularios, filtros y flujos de gestión. También se han comprobado las pantallas mediante el motor de Flutter, con datos de ejemplo y distintos tamaños. Las pruebas no modifican registros de producción.
 
 Más información: [inventario de Figma](documentacion/INVENTARIO_FIGMA.md), [cobertura de pantallas](documentacion/COBERTURA_PANTALLAS.md) y [revisión de código](documentacion/REVISION_CODIGO.md).

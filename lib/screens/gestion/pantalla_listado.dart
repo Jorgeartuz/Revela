@@ -1,3 +1,4 @@
+import 'package:revela/widgets/servicios/listado_servicios.dart';
 import 'package:revela/widgets/menu/menu_administrativo.dart';
 import 'package:revela/widgets/profesionales/listado_profesionales.dart';
 import 'package:revela/routes/rutas_aplicacion.dart';
@@ -34,6 +35,7 @@ class _EstadoPantallaListado extends State<PantallaListado> {
   late Future<List<Map<String, dynamic>>> _consulta;
   final _controladorBusqueda = TextEditingController();
   Future<List<Map<String, dynamic>>>? _especialidades;
+  final _serviciosProcesando = <int>{};
   String _busqueda = '';
   String _filtroEstado = 'todos';
   String? _especialidadSeleccionada;
@@ -175,9 +177,12 @@ class _EstadoPantallaListado extends State<PantallaListado> {
           )
         : widget.modulo == ModuloGestion.profesionales
         ? _contenidoProfesionales()
+        : widget.modulo == ModuloGestion.servicios
+        ? _contenidoServicios()
         : _contenido();
     if (widget.integrado) return content;
-    if (widget.modulo == ModuloGestion.profesionales) {
+    if (widget.modulo == ModuloGestion.profesionales ||
+        widget.modulo == ModuloGestion.servicios) {
       return Scaffold(
         body: SafeArea(
           bottom: false,
@@ -251,6 +256,87 @@ class _EstadoPantallaListado extends State<PantallaListado> {
                   setState(() => _especialidadSeleccionada = valor),
               alCrear: widget.soloLectura ? null : _formulario,
               alAbrir: _abrirDetalle,
+              alActualizar: _actualizar,
+            ),
+          ),
+    ),
+  );
+
+  Future<void> _editarServicio(Map<String, dynamic> registro) async {
+    final cambio = await Navigator.push<bool>(
+      context,
+      RutasAplicacion.formulario(
+        ArgumentosFormulario(
+          modulo: ModuloGestion.servicios,
+          servicio: widget.servicio,
+          datosIniciales: registro,
+          esEdicion: true,
+        ),
+      ),
+    );
+    if (cambio == true && mounted) await _actualizar();
+  }
+
+  Future<void> _cambiarEstadoServicio(Map<String, dynamic> registro) async {
+    final id = registro['id'];
+    final activo = registro['activo'] ?? registro['estado'];
+    if (id is! int || activo is! bool || _serviciosProcesando.contains(id)) {
+      return;
+    }
+    setState(() {
+      _serviciosProcesando.add(id);
+    });
+    try {
+      await widget.servicio.guardar(ModuloGestion.servicios, {
+        'activo': !activo,
+      }, id: id);
+      if (mounted) await _actualizar();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(mensajeError(error))));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _serviciosProcesando.remove(id);
+        });
+      }
+    }
+  }
+
+  Widget _contenidoServicios() => RefreshIndicator(
+    onRefresh: _actualizar,
+    child: FutureBuilder<List<Map<String, dynamic>>>(
+      future: _consulta,
+      builder: (context, resultado) =>
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _especialidades,
+            builder: (context, catalogo) => ListadoServicios(
+              registros: resultado.data ?? [],
+              especialidades: catalogo.data ?? [],
+              controladorBusqueda: _controladorBusqueda,
+              busqueda: _busqueda,
+              filtroEstado: _filtroEstado,
+              especialidadSeleccionada: _especialidadSeleccionada,
+              cargando:
+                  resultado.connectionState == ConnectionState.waiting ||
+                  catalogo.connectionState == ConnectionState.waiting,
+              error: resultado.hasError
+                  ? mensajeError(resultado.error)
+                  : catalogo.hasError
+                  ? mensajeError(catalogo.error)
+                  : null,
+              alBuscar: (valor) => setState(() => _busqueda = valor),
+              alFiltrarEstado: (valor) => setState(() => _filtroEstado = valor),
+              alFiltrarEspecialidad: (valor) =>
+                  setState(() => _especialidadSeleccionada = valor),
+              alCrear: widget.soloLectura ? null : _formulario,
+              alEditar: widget.soloLectura ? null : _editarServicio,
+              alCambiarEstado: widget.soloLectura
+                  ? null
+                  : _cambiarEstadoServicio,
+              procesando: _serviciosProcesando,
               alActualizar: _actualizar,
             ),
           ),

@@ -89,7 +89,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(enlace);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(BackButton).first);
+      if (modulo == ModuloGestion.servicios) {
+        await tester.binding.handlePopRoute();
+      } else {
+        await tester.tap(find.byType(BackButton).first);
+      }
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(consultas, 2);
