@@ -23,15 +23,11 @@ class ArgumentosFormulario {
     required this.servicio,
     this.datosIniciales,
     this.esEdicion = false,
-    this.mostrarErrores = false,
-    this.errorInicial,
-    this.accionInicial,
   });
   final ModuloGestion modulo;
   final ServicioGestion servicio;
   final Map<String, dynamic>? datosIniciales;
-  final bool esEdicion, mostrarErrores;
-  final String? errorInicial, accionInicial;
+  final bool esEdicion;
 }
 
 class ArgumentosDetalle {
@@ -40,11 +36,9 @@ class ArgumentosDetalle {
     required this.servicio,
     required this.registro,
     this.soloLectura = false,
-    this.accionInicial,
   });
   final ModuloGestion modulo;
   final ServicioGestion servicio;
   final Map<String, dynamic> registro;
   final bool soloLectura;
-  final String? accionInicial;
 }

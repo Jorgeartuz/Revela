@@ -1,21 +1,22 @@
+import 'package:revela/widgets/campos/campo_gestion.dart';
+import 'package:revela/models/reservas/horario_disponible.dart';
+import 'package:revela/widgets/reservas/selector_horario.dart';
 import 'package:revela/routes/rutas_aplicacion.dart';
 import 'package:revela/models/navegacion/argumentos_gestion.dart';
 import 'package:revela/models/gestion/opcion_seleccion.dart';
 import 'package:revela/widgets/botones/boton_principal.dart';
-import 'package:revela/screens/gestion/pantalla_operacion_exitosa.dart';
-import 'package:revela/screens/gestion/pantalla_revision_datos.dart';
+import 'package:revela/screens/gestion/operacion_exitosa.dart';
+import 'package:revela/screens/gestion/revision_datos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 
-import 'package:revela/config/tema_aplicacion.dart';
 import 'package:revela/models/gestion/modulo_gestion.dart';
 import 'package:revela/models/gestion/campos_formulario.dart';
-import 'package:revela/models/gestion/valores_registro.dart';
 import 'package:revela/models/gestion/datos_para_api.dart';
 import 'package:revela/services/remote/servicio_gestion.dart';
 import 'package:revela/widgets/gestion/componentes_compartidos.dart';
-import 'package:revela/screens/gestion/pantalla_listado.dart';
+import 'package:revela/screens/gestion/listado.dart';
 
 class PantallaFormulario extends StatefulWidget {
   const PantallaFormulario({
@@ -24,16 +25,11 @@ class PantallaFormulario extends StatefulWidget {
     required this.servicio,
     this.datosIniciales,
     this.esEdicion = false,
-    this.mostrarErrores = false,
-    this.errorInicial,
-    this.accionInicial,
   });
   final ModuloGestion modulo;
   final ServicioGestion servicio;
   final Map<String, dynamic>? datosIniciales;
   final bool esEdicion;
-  final bool mostrarErrores;
-  final String? errorInicial, accionInicial;
   @override
   State<PantallaFormulario> createState() => _EstadoPantallaFormulario();
 }
@@ -49,6 +45,19 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
   String? _error;
   bool _errorCargaOpciones = false;
   Map<String, dynamic>? _clienteExistente;
+  String? get _bloqueoConfiguracion {
+    if (widget.modulo == ModuloGestion.horarios &&
+        !widget.esEdicion &&
+        widget.servicio.diasSemana.length != 7) {
+      return 'El centro debe confirmar los días laborales antes de registrar horarios.';
+    }
+    if (widget.modulo == ModuloGestion.inasistencias &&
+        widget.servicio.motivosInasistencia.length != 3) {
+      return 'El centro debe confirmar los motivos de inasistencia antes de registrar o editar una inasistencia.';
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -76,12 +85,10 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
             (start != null && end != null && start != end ? 'rango' : 'dia');
       }
       if (f.key == 'motivoLabel' && value == null) {
-        value =
-            codigosMotivosInasistencia(vistaPrevia: widget.servicio.vistaPrevia)
-                .entries
-                .where((e) => e.value == widget.datosIniciales?['motivo'])
-                .firstOrNull
-                ?.key;
+        value = widget.servicio.motivosInasistencia.entries
+            .where((e) => e.value == widget.datosIniciales?['motivo'])
+            .firstOrNull
+            ?.key;
       }
       if (f.kind == TipoCampo.interruptor) value = value ?? false;
       if (value != null) _valores[f.key] = value;
@@ -110,20 +117,8 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
         setState(() {
           _cargando = false;
           _errorCargaOpciones = false;
-          _error = widget.servicio.vistaPrevia ? widget.errorInicial : null;
+          _error = null;
         });
-      }
-      if (widget.servicio.vistaPrevia && widget.accionInicial == 'deactivate') {
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          if (!mounted) return;
-          final f = _campos.firstWhere((f) => f.kind == TipoCampo.interruptor);
-          await _confirmarDesactivacion(f);
-        });
-      }
-      if (widget.mostrarErrores) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _claveFormulario.currentState?.validate(),
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -188,6 +183,10 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
 
   Future<void> _guardar() async {
     if (_guardando || _cargando) return;
+    if (_bloqueoConfiguracion != null) {
+      _mostrarError(_bloqueoConfiguracion!);
+      return;
+    }
     FocusScope.of(context).unfocus();
     final camposVisiblesValidos =
         _claveFormulario.currentState?.validate() ?? false;
@@ -229,7 +228,8 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
         widget.modulo,
         _valores,
         esEdicion: widget.esEdicion,
-        vistaPrevia: widget.servicio.vistaPrevia,
+        diasSemana: widget.servicio.diasSemana,
+        motivosInasistencia: widget.servicio.motivosInasistencia,
       );
     } catch (e) {
       _mostrarError(mensajeError(e));
@@ -248,7 +248,6 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
             values: _valores,
             campos: _campos,
             opciones: _opciones,
-            servicio: widget.servicio,
           ),
         ),
       );
@@ -339,7 +338,7 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
               ModuloGestion.especialidades => 'Nueva especialidad',
               _ => 'Nuevo ${widget.modulo.nombreSingular}',
             },
-      vistaPrevia: widget.servicio.vistaPrevia,
+
       bottom: SectionNavigation(modulo: widget.modulo, onSelect: _navegar),
       child: _cargando
           ? const Center(child: CircularProgressIndicator())
@@ -371,6 +370,8 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
                                 liveRegion: true,
                                 child: cuadroInformacion(_error!),
                               ),
+                            if (_bloqueoConfiguracion != null)
+                              cuadroInformacion(_bloqueoConfiguracion!),
                             if (_errorCargaOpciones)
                               TextButton(
                                 onPressed: _guardando
@@ -464,16 +465,6 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
                                     : _consultarDisponibilidad,
                               ),
                             ],
-                            if (widget.modulo == ModuloGestion.horarios &&
-                                !widget.servicio.vistaPrevia)
-                              cuadroInformacion(
-                                'La configuración de los días laborales debe estar habilitada por el centro antes de guardar.',
-                              ),
-                            if (widget.modulo == ModuloGestion.inasistencias &&
-                                !widget.servicio.vistaPrevia)
-                              cuadroInformacion(
-                                'El registro requiere que el centro tenga habilitados los motivos de inasistencia.',
-                              ),
                             const SizedBox(height: 12),
                             if (widget.modulo != ModuloGestion.clientes)
                               _botonGuardar(),
@@ -498,7 +489,7 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
     ),
   );
   Widget _botonGuardar() => BotonPrincipal(
-    alPulsar: _guardar,
+    alPulsar: _bloqueoConfiguracion == null ? _guardar : null,
     cargando: _guardando,
     texto: widget.modulo == ModuloGestion.reservas
         ? 'Confirmar Reserva'
@@ -545,257 +536,53 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
     return true;
   }
 
-  Widget _campo(CampoFormulario f) {
-    final input = _entradaCampo(f);
-    if (f.kind == TipoCampo.interruptor) return input;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          '${f.label}${f.required ? '*' : ''}',
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 8),
-        input,
-      ],
-    );
-  }
-
-  Widget _entradaCampo(CampoFormulario f) {
-    if (f.kind == TipoCampo.interruptor) {
-      return SwitchListTile.adaptive(
-        contentPadding: EdgeInsets.zero,
-        title: Text(f.label),
-        value: _valores[f.key] == true,
-        onChanged: _guardando
-            ? null
-            : (v) {
-                if (!v &&
-                    widget.esEdicion &&
-                    [
-                      ModuloGestion.servicios,
-                      ModuloGestion.profesionales,
-                    ].contains(widget.modulo)) {
-                  _confirmarDesactivacion(f);
-                } else {
-                  _asignarValor(f, v);
-                }
-              },
-      );
-    }
-    if (f.opciones != null &&
-        ['dia', 'tipoFecha', 'motivoLabel'].contains(f.key)) {
-      return FormField<String>(
-        initialValue: _valores[f.key]?.toString(),
-        validator: (v) => validarCampo(f, v),
-        builder: (estado) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: [
-                for (final e in f.opciones!.entries)
-                  ChoiceChip(
-                    showCheckmark: false,
-                    selectedColor: ColoresAplicacion.principal.withValues(
-                      alpha: .25,
-                    ),
-                    label: Text(
-                      f.key == 'dia' ? e.value.substring(0, 3) : e.value,
-                    ),
-                    selected: _valores[f.key] == e.key,
-                    onSelected: _guardando
-                        ? null
-                        : (_) {
-                            estado.didChange(e.key);
-                            _asignarValor(f, e.key);
-                          },
-                  ),
-              ],
-            ),
-            if (estado.hasError)
-              Text(
-                estado.errorText!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: 12,
-                ),
-              ),
-          ],
-        ),
-      );
-    }
-
-    if (f.kind == TipoCampo.seleccion && f.origen != null) {
-      final opciones = <OpcionSeleccion>[];
-      for (final registro in _opciones[f.key] ?? <Map<String, dynamic>>[]) {
-        final id = registro['id'];
-        if (id is int) {
-          opciones.add(
-            OpcionSeleccion(id: id, nombre: nombreRegistro(registro)),
-          );
-        }
-      }
-      final actual = _valores[f.key] as int?;
-      return DropdownButtonFormField<int>(
-        key: ValueKey('${f.key}:$actual:${opciones.length}'),
-        initialValue: opciones.any((opcion) => opcion.id == actual)
-            ? actual
-            : null,
-        isExpanded: true,
-        hint: Text('Seleccionar ${f.label.toLowerCase()}'),
-        items: opciones
-            .map(
-              (opcion) => DropdownMenuItem<int>(
-                value: opcion.id,
-                child: Text(opcion.nombre, overflow: TextOverflow.ellipsis),
-              ),
-            )
-            .toList(),
-        onChanged: _guardando ? null : (id) => _asignarValor(f, id),
-        validator: (id) => validarCampo(f, id),
-      );
-    }
-    if (f.kind == TipoCampo.seleccion) {
-      final opciones =
-          f.opciones ??
-          {
-            for (final r in _opciones[f.key] ?? [])
-              '${r['id']}': nombreRegistro(r),
-          };
-      final current = _valores[f.key]?.toString();
-      return DropdownButtonFormField<String>(
-        key: ValueKey('${f.key}:$current:${opciones.length}'),
-        initialValue: opciones.containsKey(current) ? current : null,
-        isExpanded: true,
-        hint: Text('Seleccionar ${f.label.toLowerCase()}'),
-        decoration: InputDecoration(labelText: null),
-        items: [
-          for (final e in opciones.entries)
-            DropdownMenuItem(
-              value: e.key,
-              child: Text(e.value, overflow: TextOverflow.ellipsis),
-            ),
-        ],
-        onChanged: _guardando ? null : (valor) => _asignarValor(f, valor),
-        validator: (v) => validarCampo(f, v),
-      );
-    }
-    if (f.kind == TipoCampo.fecha || f.kind == TipoCampo.hora) {
-      final raw = _valores[f.key]?.toString();
-      final display = raw == null
-          ? ''
-          : f.kind == TipoCampo.fecha
-          ? formatoFecha(raw)
-          : minutosDeHora(raw) == null
-          ? 'Hora no válida'
-          : '${(minutosDeHora(raw)! ~/ 60).toString().padLeft(2, '0')}:${(minutosDeHora(raw)! % 60).toString().padLeft(2, '0')}';
-      return FormField<String>(
-        initialValue: raw,
-        validator: (_) => validarCampo(f, _valores[f.key]),
-        builder: (estado) => InkWell(
-          onTap: _guardando
-              ? null
-              : () async {
-                  if (f.kind == TipoCampo.fecha) {
-                    final datosIniciales =
-                        DateTime.tryParse(raw ?? '') ?? DateTime.now();
-                    final date = await showDatePicker(
-                      context: context,
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime(2100),
-                      initialDate: datosIniciales.isBefore(DateTime(1900))
-                          ? DateTime(1900)
-                          : datosIniciales.isAfter(DateTime(2100))
-                          ? DateTime(2100)
-                          : datosIniciales,
-                    );
-                    if (date != null && mounted) {
-                      _asignarValor(f, DateFormat('yyyy-MM-dd').format(date));
-                      estado.didChange(_valores[f.key]?.toString());
-                    }
-                  } else {
-                    final minutes = minutosDeHora(raw) ?? 9 * 60;
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay(
-                        hour: minutes ~/ 60,
-                        minute: minutes % 60,
-                      ),
-                    );
-                    if (time != null && mounted) {
-                      _asignarValor(
-                        f,
-                        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00',
-                      );
-                      estado.didChange(_valores[f.key]?.toString());
-                    }
-                  }
-                },
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: null,
-              errorText: estado.errorText,
-              suffixIcon: Icon(
-                f.kind == TipoCampo.fecha
-                    ? Icons.calendar_today_outlined
-                    : Icons.schedule,
-                size: 20,
-              ),
-            ),
-            child: Text(
-              display.isEmpty
-                  ? (f.kind == TipoCampo.fecha ? 'dd/mm/aaaa' : 'Elegir hora')
-                  : display,
-              style: TextStyle(
-                color: display.isEmpty
-                    ? ColoresAplicacion.textoSecundario
-                    : ColoresAplicacion.texto,
-              ),
-            ),
+  Widget _campo(CampoFormulario campo) => CampoGestion(
+    key: ValueKey(campo.key),
+    campo: campo,
+    valor: _valores[campo.key],
+    controlador: _controladores[campo.key]!,
+    opciones: [
+      for (final registro in _opciones[campo.key] ?? <Map<String, dynamic>>[])
+        if (registro['id'] is int)
+          OpcionSeleccion(
+            id: registro['id'] as int,
+            nombre: nombreRegistro(registro),
           ),
-        ),
-      );
-    }
-    return TextFormField(
-      key: ValueKey(f.key),
-      controller: _controladores[f.key],
-      enabled: !_guardando,
-      maxLength: f.maxLength,
-      maxLines: f.kind == TipoCampo.textoLargo ? 3 : 1,
-      keyboardType: f.kind == TipoCampo.entero
-          ? TextInputType.number
-          : f.kind == TipoCampo.decimal
-          ? const TextInputType.numberWithOptions(decimal: true)
-          : f.kind == TipoCampo.correo
-          ? TextInputType.emailAddress
-          : TextInputType.text,
-      decoration: InputDecoration(labelText: null, hintText: f.hint),
-      validator: (v) => validarCampo(f, v),
-      onChanged: (v) {
-        setState(() {
-          _hayCambios = true;
-          if (f.key == 'documento' && _clienteExistente != null) {
-            _clienteExistente = null;
-            _error = null;
-          }
-          if (v.trim().isEmpty) {
-            if (widget.esEdicion && !f.required) {
-              _valores[f.key] = null;
-            } else {
-              _valores.remove(f.key);
-            }
-          } else {
-            _valores[f.key] = f.kind == TipoCampo.entero
-                ? int.tryParse(v)
-                : f.kind == TipoCampo.decimal
-                ? double.tryParse(v.replaceAll(',', '.'))
-                : v.trim();
-          }
-        });
-      },
-    );
+    ],
+    bloqueado: _guardando,
+    alCambiar: (valor) => _asignarValor(campo, valor),
+    alEscribir: (valor) => _cambiarTexto(campo, valor),
+    alDesactivar:
+        widget.esEdicion &&
+            [
+              ModuloGestion.profesionales,
+              ModuloGestion.servicios,
+            ].contains(widget.modulo)
+        ? () => _confirmarDesactivacion(campo)
+        : null,
+  );
+
+  void _cambiarTexto(CampoFormulario f, String v) {
+    setState(() {
+      _hayCambios = true;
+      if (f.key == 'documento' && _clienteExistente != null) {
+        _clienteExistente = null;
+        _error = null;
+      }
+      if (v.trim().isEmpty) {
+        if (widget.esEdicion && !f.required) {
+          _valores[f.key] = null;
+        } else {
+          _valores.remove(f.key);
+        }
+      } else {
+        _valores[f.key] = f.kind == TipoCampo.entero
+            ? int.tryParse(v)
+            : f.kind == TipoCampo.decimal
+            ? double.tryParse(v.replaceAll(',', '.'))
+            : v.trim();
+      }
+    });
   }
 
   Future<void> _consultarDisponibilidad() async {
@@ -810,29 +597,32 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
     }
     setState(() => _guardando = true);
     try {
-      final data = await widget.servicio.consultarDisponibilidad(
+      final horarios = await widget.servicio.consultarDisponibilidad(
         serviceId: id,
         date: date,
         idProfesional: _valores['profesionalId'] as int?,
       );
       if (!mounted) return;
-      await showDialog<void>(
+      final elegido = await showModalBottomSheet<HorarioDisponible>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Disponibilidad'),
-          content: Text(
-            data is List && data.isEmpty
-                ? 'No se encontraron horarios disponibles para la selección.'
-                : 'La disponibilidad fue consultada. El centro validará el horario al guardar la reserva.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Entendido'),
-            ),
-          ],
+        isScrollControlled: true,
+        showDragHandle: true,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .8,
+          maxWidth: 600,
         ),
+        builder: (context) => SelectorHorario(horarios: horarios),
       );
+      if (elegido != null && mounted) {
+        _asignarValor(
+          _campos.firstWhere((campo) => campo.key == 'fechaDia'),
+          DateFormat('yyyy-MM-dd').format(elegido.fecha),
+        );
+        _asignarValor(
+          _campos.firstWhere((campo) => campo.key == 'hora'),
+          DateFormat('HH:mm:ss').format(elegido.fecha),
+        );
+      }
     } catch (e) {
       if (mounted) _mostrarError(mensajeError(e));
     } finally {

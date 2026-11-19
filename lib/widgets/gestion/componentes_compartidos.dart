@@ -56,14 +56,12 @@ class SectionShell extends StatelessWidget {
     required this.child,
     this.actions,
     this.bottom,
-    this.vistaPrevia = false,
     this.centrarTitulo = false,
   });
   final String title;
   final Widget child;
   final List<Widget>? actions;
   final Widget? bottom;
-  final bool vistaPrevia;
   final bool centrarTitulo;
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -76,14 +74,6 @@ class SectionShell extends StatelessWidget {
       bottom: false,
       child: Column(
         children: [
-          if (vistaPrevia)
-            const MaterialBanner(
-              content: Text(
-                'Vista de diseño · datos de ejemplo',
-                style: TextStyle(fontSize: 12),
-              ),
-              actions: [SizedBox.shrink()],
-            ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -108,12 +98,10 @@ class RecordCard extends StatelessWidget {
     required this.modulo,
     required this.registro,
     required this.onTap,
-    this.vistaPrevia = false,
   });
   final ModuloGestion modulo;
   final Map<String, dynamic> registro;
   final VoidCallback onTap;
-  final bool vistaPrevia;
   @override
   Widget build(BuildContext context) {
     final person =
@@ -121,10 +109,7 @@ class RecordCard extends StatelessWidget {
         modulo == ModuloGestion.profesionales;
     final name = switch (modulo) {
       ModuloGestion.reservas => nombrePersona(registro['cliente']),
-      ModuloGestion.horarios => nombreDia(
-        registro['diaSemana'],
-        vistaPrevia: vistaPrevia,
-      ),
+      ModuloGestion.horarios => nombreDia(registro['diaSemana']),
       ModuloGestion.inasistencias =>
         '${formatoFecha(registro['fechaInicio'])} → ${formatoFecha(registro['fechaFin'])}',
       ModuloGestion.cierres => 'Cierre #${registro['id']}',
@@ -321,7 +306,7 @@ Future<bool> confirmarAccion(
     ) ??
     false;
 
-String nombreDia(Object? value, {bool vistaPrevia = false}) {
+String nombreDia(Object? value) {
   const labels = {
     'domingo': 'Domingo',
     'lunes': 'Lunes',
@@ -331,7 +316,7 @@ String nombreDia(Object? value, {bool vistaPrevia = false}) {
     'viernes': 'Viernes',
     'sabado': 'Sábado',
   };
-  final codes = codigosDiasSemana(vistaPrevia: vistaPrevia);
+  final codes = codigosDiasSemana();
   for (final entry in codes.entries) {
     if ('${entry.value}' == '$value') {
       return labels[entry.key] ?? 'Jornada laboral';

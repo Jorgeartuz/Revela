@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:revela/aplicacion.dart';
-import 'package:revela/screens/autenticacion/pantalla_recuperacion.dart';
+import 'package:revela/screens/autenticacion/carga_inicial.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

@@ -2,24 +2,23 @@ import 'dart:convert';
 
 import 'package:revela/models/gestion/modulo_gestion.dart';
 
-Map<String, int> codigosDiasSemana({bool vistaPrevia = false, String? origen}) {
-  const ejemplo = {
-    'domingo': 0,
-    'lunes': 1,
-    'martes': 2,
-    'miercoles': 3,
-    'jueves': 4,
-    'viernes': 5,
-    'sabado': 6,
+Map<String, int> codigosDiasSemana({String? origen}) {
+  const dias = {
+    'domingo',
+    'lunes',
+    'martes',
+    'miercoles',
+    'jueves',
+    'viernes',
+    'sabado',
   };
-  if (vistaPrevia) return ejemplo;
   try {
     final configuracion = jsonDecode(
       origen ?? const String.fromEnvironment('WEEKDAY_MAP', defaultValue: '{}'),
     );
     if (configuracion is! Map ||
         configuracion.length != 7 ||
-        ejemplo.keys.any(
+        dias.any(
           (k) =>
               configuracion[k] is! int ||
               configuracion[k] < 0 ||
@@ -28,15 +27,13 @@ Map<String, int> codigosDiasSemana({bool vistaPrevia = false, String? origen}) {
         configuracion.values.toSet().length != 7) {
       return {};
     }
-    return {for (final k in ejemplo.keys) k: configuracion[k] as int};
+    return {for (final k in dias) k: configuracion[k] as int};
   } on FormatException {
     return {};
   }
 }
 
-Map<String, int> codigosMotivosInasistencia({bool vistaPrevia = false}) {
-  if (vistaPrevia) return {'salud': 0, 'familiar': 1, 'otro': 2};
-
+Map<String, int> codigosMotivosInasistencia() {
   final valoresConfigurados = {
     'salud': const String.fromEnvironment('ABSENCE_HEALTH'),
     'familiar': const String.fromEnvironment('ABSENCE_FAMILY'),
@@ -45,9 +42,11 @@ Map<String, int> codigosMotivosInasistencia({bool vistaPrevia = false}) {
   final codigos = <String, int>{};
   for (final entrada in valoresConfigurados.entries) {
     final codigo = int.tryParse(entrada.value);
-    if (codigo != null) codigos[entrada.key] = codigo;
+    if (codigo != null && codigo >= 0 && codigo <= 4) {
+      codigos[entrada.key] = codigo;
+    }
   }
-  return codigos;
+  return codigos.values.toSet().length == codigos.length ? codigos : {};
 }
 
 int? minutosDeHora(Object? valor) {

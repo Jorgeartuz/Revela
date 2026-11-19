@@ -1,16 +1,15 @@
 import 'package:revela/routes/rutas_aplicacion.dart';
 import 'package:revela/models/navegacion/argumentos_gestion.dart';
-import 'package:revela/screens/gestion/pantalla_operacion_exitosa.dart';
+import 'package:revela/screens/gestion/operacion_exitosa.dart';
 import 'package:revela/screens/profesional/navegacion_profesional.dart';
 import 'package:revela/widgets/gestion/secciones_detalle.dart';
 import 'package:flutter/material.dart';
 
 import 'package:revela/config/tema_aplicacion.dart';
-import 'package:revela/models/inicio/reserva.dart';
 import 'package:revela/models/gestion/modulo_gestion.dart';
 import 'package:revela/services/remote/servicio_gestion.dart';
 import 'package:revela/widgets/gestion/componentes_compartidos.dart';
-import 'package:revela/screens/gestion/pantalla_listado.dart';
+import 'package:revela/screens/gestion/listado.dart';
 
 class PantallaDetalle extends StatefulWidget {
   const PantallaDetalle({
@@ -19,30 +18,16 @@ class PantallaDetalle extends StatefulWidget {
     required this.registro,
     required this.servicio,
     this.soloLectura = false,
-    this.accionInicial,
   });
   final ModuloGestion modulo;
   final Map<String, dynamic> registro;
   final ServicioGestion servicio;
   final bool soloLectura;
-  final String? accionInicial;
   @override
   State<PantallaDetalle> createState() => _EstadoPantallaDetalle();
 }
 
 class _EstadoPantallaDetalle extends State<PantallaDetalle> {
-  @override
-  void initState() {
-    super.initState();
-    if (widget.servicio.vistaPrevia && widget.accionInicial != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (widget.accionInicial == 'cancel') _eliminar();
-        if (widget.accionInicial == 'attendance') _confirmarAsistencia();
-      });
-    }
-  }
-
   bool _procesando = false;
   bool _accionPendiente = false;
   String? _error;
@@ -120,57 +105,6 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
     }
   }
 
-  Future<void> _confirmarAsistencia() async {
-    if (_accionPendiente || _procesando) return;
-    _accionPendiente = true;
-    try {
-      if (!await confirmarAccion(
-            context,
-            title: 'Confirmar asistencia',
-            description: '¿El servicio de esta reserva fue atendido?',
-            action: 'Confirmar',
-          ) ||
-          !mounted) {
-        return;
-      }
-      if (widget.servicio.vistaPrevia) {
-        final stored = widget.servicio.memoria[ModuloGestion.reservas]!
-            .where((r) => r['id'] == registro['id'])
-            .firstOrNull;
-        if (stored != null) stored['estado'] = 2;
-        setState(() => registro['estado'] = 2);
-        await Navigator.push<void>(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const PantallaOperacionExitosa(
-              title: 'Asistencia confirmada',
-              message: 'Cambio aplicado en la vista de diseño.',
-            ),
-          ),
-        );
-        if (mounted) Navigator.pop(context, true);
-      } else {
-        await showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Confirmar asistencia'),
-            content: const Text(
-              'La confirmación de asistencia todavía no está habilitada para este centro. Contacta al administrador.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Entendido'),
-              ),
-            ],
-          ),
-        );
-      }
-    } finally {
-      _accionPendiente = false;
-    }
-  }
-
   void _abrir(ModuloGestion modulo, {Map<String, String> filtros = const {}}) =>
       Navigator.push<void>(
         context,
@@ -233,14 +167,7 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
         add('Estado', registro['activa'] == true ? 'Activa' : 'Inactiva');
       }
     }
-    final states = widget.servicio.vistaPrevia
-        ? const EstadosReserva(
-            programada: 0,
-            confirmada: 1,
-            atendida: 2,
-            cancelada: 3,
-          )
-        : EstadosReserva.configurados;
+    final states = widget.servicio.estadosReserva;
     final status = states.label(
       registro['estado'] is int ? registro['estado'] as int : null,
     );
@@ -261,13 +188,7 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
       add('Estado', status);
     }
     if (modulo == ModuloGestion.horarios) {
-      add(
-        'Día',
-        nombreDia(
-          registro['diaSemana'],
-          vistaPrevia: widget.servicio.vistaPrevia,
-        ),
-      );
+      add('Día', nombreDia(registro['diaSemana']));
       add('Inicio', registro['horaInicio']);
       add('Fin', registro['horaFin']);
       add(
@@ -296,9 +217,11 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
       add('Valor de comisión', formatoMoneda(registro['valorComision']));
     }
     final completed = status == 'ATENDIDA' || status == 'CANCELADA';
+    final puedeCambiar =
+        modulo != ModuloGestion.reservas || (status != null && !completed);
     return SectionShell(
       title: 'Detalle de ${modulo.nombreSingular}',
-      vistaPrevia: widget.servicio.vistaPrevia,
+
       bottom: widget.soloLectura
           ? NavegacionProfesional(
               servicio: widget.servicio,
@@ -408,7 +331,7 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
             ),
           const SizedBox(height: 24),
           if (_procesando) const Center(child: CircularProgressIndicator()),
-          if (!widget.soloLectura && modulo.puedeEditar && !completed)
+          if (!widget.soloLectura && modulo.puedeEditar && puedeCambiar)
             FilledButton(
               onPressed: _procesando ? null : _editar,
               child: Text(
@@ -439,16 +362,7 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
               child: const Text('Ver comisiones del cierre'),
             ),
           ],
-          if (modulo == ModuloGestion.reservas &&
-              !completed &&
-              (!widget.soloLectura || status == 'CONFIRMADA')) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _procesando ? null : _confirmarAsistencia,
-              child: const Text('Confirmar asistencia'),
-            ),
-          ],
-          if (!widget.soloLectura && modulo.puedeEliminar && !completed) ...[
+          if (!widget.soloLectura && modulo.puedeEliminar && puedeCambiar) ...[
             const SizedBox(height: 12),
             OutlinedButton(
               style: OutlinedButton.styleFrom(
@@ -462,6 +376,10 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
               ),
             ),
           ],
+          if (modulo == ModuloGestion.reservas && status == null)
+            cuadroInformacion(
+              'El estado de esta reserva todavía no está identificado. Por seguridad, no se puede modificar ni cancelar desde la aplicación.',
+            ),
           if (widget.soloLectura && modulo == ModuloGestion.reservas)
             OutlinedButton(
               onPressed: () => Navigator.pop(context),
@@ -470,9 +388,7 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
           if (modulo == ModuloGestion.reservas && !widget.soloLectura) ...[
             tituloSeccion('HISTORIAL'),
             cuadroInformacion(
-              widget.servicio.vistaPrevia
-                  ? 'Reserva creada · datos de ejemplo'
-                  : 'El historial de cambios no está disponible para esta reserva.',
+              'El historial de cambios no está disponible para esta reserva.',
             ),
           ],
         ],

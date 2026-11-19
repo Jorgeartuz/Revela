@@ -6,17 +6,6 @@ import 'package:revela/services/remote/cliente_api.dart';
 import 'package:revela/models/login/sesion_usuario.dart';
 import 'package:revela/models/inicio/reserva.dart';
 
-enum CatalogoInicio {
-  profesionales('Profesionales', 'api/Profesionales'),
-  clientes('Clientes', 'api/Clientes'),
-  servicios('Servicios', 'api/Servicios'),
-  especialidades('Especialidades', 'api/Especialidades'),
-  cierres('Cierres', 'api/liquidaciones-comisiones');
-
-  const CatalogoInicio(this.title, this.path);
-  final String title, path;
-}
-
 class ErrorInicio implements Exception {
   const ErrorInicio(this.message);
   final String message;
@@ -93,7 +82,4 @@ class ServicioInicio {
       throw const ErrorInicio('No se pudieron leer las reservas.');
     }
   }
-
-  Future<List<Map<String, dynamic>>> catalogo(CatalogoInicio catalogo) =>
-      _consultarListado(catalogo.path);
 }

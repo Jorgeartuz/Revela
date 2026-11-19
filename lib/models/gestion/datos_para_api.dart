@@ -8,7 +8,8 @@ Map<String, dynamic> prepararDatosEnvio(
   ModuloGestion modulo,
   Map<String, dynamic> valores, {
   bool esEdicion = false,
-  bool vistaPrevia = false,
+  Map<String, int>? diasSemana,
+  Map<String, int>? motivosInasistencia,
 }) {
   final datosEnvio = Map<String, dynamic>.from(valores);
   if (modulo == ModuloGestion.clientes) {
@@ -82,7 +83,7 @@ Map<String, dynamic> prepararDatosEnvio(
       datosEnvio['horaFinAlmuerzo'] = null;
     }
     if (!esEdicion) {
-      final codigosPorDia = codigosDiasSemana(vistaPrevia: vistaPrevia);
+      final codigosPorDia = diasSemana ?? codigosDiasSemana();
       final codigo = codigosPorDia[datosEnvio.remove('dia')];
       if (codigo is! int || codigo < 0 || codigo > 6) {
         throw const ErrorGestion(
@@ -104,7 +105,7 @@ Map<String, dynamic> prepararDatosEnvio(
       );
     }
     final motivoElegido = datosEnvio.remove('motivoLabel');
-    final codigos = codigosMotivosInasistencia(vistaPrevia: vistaPrevia);
+    final codigos = motivosInasistencia ?? codigosMotivosInasistencia();
     final codigo = codigos[motivoElegido];
     if (codigo == null || codigo < 0 || codigo > 4) {
       throw const ErrorGestion(

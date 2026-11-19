@@ -9,11 +9,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import 'package:revela/config/tema_aplicacion.dart';
-import 'package:revela/models/inicio/reserva.dart';
 import 'package:revela/services/remote/servicio_gestion.dart';
 import 'package:revela/models/gestion/modulo_gestion.dart';
 import 'package:revela/models/gestion/valores_registro.dart';
-import 'package:revela/screens/gestion/pantalla_listado.dart';
+import 'package:revela/screens/gestion/listado.dart';
 import 'package:revela/widgets/gestion/componentes_compartidos.dart';
 
 class PortalProfesional extends StatefulWidget {
@@ -176,11 +175,6 @@ class _EstadoPortalProfesional extends State<PortalProfesional> {
       bottom: false,
       child: Column(
         children: [
-          if (widget.servicio.vistaPrevia)
-            const MaterialBanner(
-              content: Text('Vista de diseño · datos de ejemplo'),
-              actions: [SizedBox.shrink()],
-            ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -347,14 +341,7 @@ class _EstadoPortalProfesional extends State<PortalProfesional> {
                 d.month == now.month &&
                 d.day == now.day;
           }).toList();
-          final states = widget.servicio.vistaPrevia
-              ? const EstadosReserva(
-                  programada: 0,
-                  confirmada: 1,
-                  atendida: 2,
-                  cancelada: 3,
-                )
-              : EstadosReserva.configurados;
+          final states = widget.servicio.estadosReserva;
           String cantidad(int? code) => !resultado.hasData || code == null
               ? '—'
               : '${registros.where((r) => r['estado'] == code).length}';
@@ -608,7 +595,7 @@ class _EstadoPortalProfesional extends State<PortalProfesional> {
                       (r) => RecordCard(
                         modulo: ModuloGestion.reservas,
                         registro: r,
-                        vistaPrevia: widget.servicio.vistaPrevia,
+
                         onTap: () => Navigator.push<void>(
                           context,
                           RutasAplicacion.detalle(

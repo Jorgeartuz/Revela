@@ -1,5 +1,6 @@
+import 'package:revela/models/reservas/horario_disponible.dart';
+
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
@@ -7,7 +8,7 @@ import 'package:revela/services/remote/cliente_api.dart';
 import 'package:revela/models/login/sesion_usuario.dart';
 import 'package:revela/models/gestion/modulo_gestion.dart';
 import 'package:revela/models/gestion/valores_registro.dart';
-import 'package:revela/services/local/datos_ejemplo.dart';
+import 'package:revela/models/inicio/reserva.dart';
 
 class ErrorGestion implements Exception {
   const ErrorGestion(this.message, {this.statusCode});
@@ -31,34 +32,28 @@ class ServicioGestion {
     required this.api,
     required this.sesion,
     this.alNoEstarAutorizado,
-  }) : vistaPrevia = false;
-  ServicioGestion.vistaPrevia()
-    : api = null,
-      sesion = null,
-      alNoEstarAutorizado = null,
-      vistaPrevia = true;
-  final ClienteApi? api;
-  final SesionUsuario? sesion;
+  });
+  final ClienteApi api;
+  final SesionUsuario sesion;
   final void Function()? alNoEstarAutorizado;
-  final bool vistaPrevia;
   void Function()? alIrAlInicio;
   void Function()? alCerrarSesion;
   void Function(int)? alCambiarPestanaProfesional;
-  Map<ModuloGestion, List<Map<String, dynamic>>>? _memoria;
-  Map<ModuloGestion, List<Map<String, dynamic>>> get memoria =>
-      _memoria ??= datosEjemplo();
+  Map<String, int> get diasSemana => codigosDiasSemana();
+  Map<String, int> get motivosInasistencia => codigosMotivosInasistencia();
+  EstadosReserva get estadosReserva => EstadosReserva.configurados;
 
   Future<Object?> _solicitar(String method, String path, {Object? body}) async {
-    if (sesion?.estaVencida ?? true) {
+    if (sesion.estaVencida) {
       scheduleMicrotask(() => alNoEstarAutorizado?.call());
       throw const ErrorGestion('Tu sesión ha vencido. Inicia sesión de nuevo.');
     }
     try {
       final Object? response = await switch (method) {
-        'POST' => api!.post(path, body: body, token: sesion!.tokenAcceso),
-        'PUT' => api!.put(path, body: body, token: sesion!.tokenAcceso),
-        'DELETE' => api!.delete(path, body: body, token: sesion!.tokenAcceso),
-        _ => api!.get(path, token: sesion!.tokenAcceso),
+        'POST' => api.post(path, body: body, token: sesion.tokenAcceso),
+        'PUT' => api.put(path, body: body, token: sesion.tokenAcceso),
+        'DELETE' => api.delete(path, body: body, token: sesion.tokenAcceso),
+        _ => api.get(path, token: sesion.tokenAcceso),
       };
       if (response is Map<String, dynamic> && response.containsKey('success')) {
         if (response['success'] != true) {
@@ -101,13 +96,6 @@ class ServicioGestion {
     ModuloGestion modulo, {
     Map<String, String> filtros = const {},
   }) async {
-    if (vistaPrevia) {
-      if (filtros['previewEmpty'] == '1') return [];
-      final registros = (jsonDecode(jsonEncode(memoria[modulo])) as List).map(
-        (r) => Map<String, dynamic>.from(r as Map),
-      );
-      return filtrarRegistros(modulo, registros, filtros);
-    }
     final query = {...filtros};
     if (modulo == ModuloGestion.profesionales) {
       query.putIfAbsent('soloActivos', () => 'false');
@@ -130,11 +118,6 @@ class ServicioGestion {
   }
 
   Future<Map<String, dynamic>?> obtenerProfesional(int id) async {
-    if (vistaPrevia) {
-      return memoria[ModuloGestion.profesionales]!
-          .where((r) => r['id'] == id)
-          .firstOrNull;
-    }
     final data = await _solicitar('GET', 'api/Profesionales/$id');
     if (data is! Map<String, dynamic> || data['id'] != id) {
       throw const ErrorGestion('No se pudo cargar el perfil del profesional.');
@@ -147,75 +130,6 @@ class ServicioGestion {
     Map<String, dynamic> body, {
     int? id,
   }) async {
-    if (vistaPrevia) {
-      final registros = memoria[modulo]!;
-      final created = {
-        ...body,
-        'id':
-            id ??
-            (registros.fold<int>(
-                  0,
-                  (m, r) => (r['id'] as int) > m ? r['id'] as int : m,
-                ) +
-                1),
-      };
-      if (modulo == ModuloGestion.servicios ||
-          modulo == ModuloGestion.profesionales) {
-        final specialty = body['especialidad'];
-        if (specialty is int) {
-          created['especialidadId'] = specialty;
-          created['especialidad'] = memoria[ModuloGestion.especialidades]!
-              .where((r) => r['id'] == specialty)
-              .firstOrNull;
-        }
-      }
-      if (modulo == ModuloGestion.especialidades) {
-        created.putIfAbsent('activa', () => true);
-      }
-      if (modulo == ModuloGestion.servicios) {
-        created.putIfAbsent('activo', () => true);
-      }
-      if (modulo == ModuloGestion.reservas) {
-        final date = DateTime.parse(created['fecha'] as String);
-        final cliente = memoria[ModuloGestion.clientes]!
-            .where((r) => r['id'] == created['clienteId'])
-            .firstOrNull;
-        final servicio = memoria[ModuloGestion.servicios]!
-            .where((r) => r['id'] == created['servicioId'])
-            .firstOrNull;
-        final profesional =
-            memoria[ModuloGestion.profesionales]!
-                .where((r) => r['id'] == created['profesionalId'])
-                .firstOrNull ??
-            memoria[ModuloGestion.profesionales]!.firstOrNull;
-        final finish = date.add(
-          Duration(minutes: servicio?['duracion'] as int? ?? 60),
-        );
-        created.addAll({
-          'cliente': cliente,
-          'servicio': servicio,
-          'profesional': profesional,
-          'profesionalId': profesional?['id'],
-          'horaInicio': date.toIso8601String().split('T').last.substring(0, 8),
-          'horaFin': finish.toIso8601String().split('T').last.substring(0, 8),
-          'estado': 0,
-        });
-      }
-      if (modulo == ModuloGestion.inasistencias &&
-          created['periodos'] is List) {
-        final periods = created['periodos'] as List;
-        if (periods.isNotEmpty) {
-          created.addAll(Map<String, dynamic>.from(periods.first as Map));
-        }
-      }
-      if (id == null) {
-        registros.add(created);
-      } else {
-        final i = registros.indexWhere((r) => r['id'] == id);
-        if (i >= 0) registros[i] = {...registros[i], ...created};
-      }
-      return created;
-    }
     final path = id == null
         ? (modulo == ModuloGestion.inasistencias
               ? '${modulo.path}/masivo'
@@ -271,24 +185,10 @@ class ServicioGestion {
     int id, {
     Map<String, dynamic>? body,
   }) async {
-    if (vistaPrevia) {
-      if (modulo == ModuloGestion.reservas) {
-        final registro = memoria[modulo]!
-            .where((r) => r['id'] == id)
-            .firstOrNull;
-        if (registro != null) {
-          registro.addAll({'estado': 3, 'motivoOtro': body?['motivoOtro']});
-        }
-      } else {
-        memoria[modulo]!.removeWhere((r) => r['id'] == id);
-      }
-      return;
-    }
     await _solicitar('DELETE', '${modulo.path}/$id', body: body);
   }
 
   Future<List<Map<String, dynamic>>> serviciosDeComision(int id) async {
-    if (vistaPrevia) return memoria[ModuloGestion.reservas]!;
     final data = await _solicitar('GET', 'api/Comisiones/$id/servicios');
     if (data is! List) {
       throw const ErrorGestion('No se pudo cargar el detalle de comisión.');
@@ -296,12 +196,11 @@ class ServicioGestion {
     return data.map((r) => Map<String, dynamic>.from(r as Map)).toList();
   }
 
-  Future<Object?> consultarDisponibilidad({
+  Future<List<HorarioDisponible>> consultarDisponibilidad({
     required int serviceId,
     required DateTime date,
     int? idProfesional,
   }) async {
-    if (vistaPrevia) return [];
     final path = Uri(
       path: 'api/agenda',
       queryParameters: {
@@ -310,6 +209,28 @@ class ServicioGestion {
         if (idProfesional != null) 'profesionalId': '$idProfesional',
       },
     ).toString();
-    return _solicitar('GET', path);
+    final datos = await _solicitar('GET', path);
+    if (datos is! List) {
+      throw const ErrorGestion('No se pudieron leer los horarios disponibles.');
+    }
+    try {
+      final horarios =
+          datos
+              .map((dato) {
+                if (dato is! Map<String, dynamic>) {
+                  throw const FormatException();
+                }
+                return HorarioDisponible.fromJson(dato);
+              })
+              .where((horario) => horario.fecha.isAfter(DateTime.now()))
+              .toList()
+            ..sort((a, b) => a.fecha.compareTo(b.fecha));
+      final fechas = <DateTime>{};
+      return horarios.where((horario) => fechas.add(horario.fecha)).toList();
+    } on FormatException {
+      throw const ErrorGestion(
+        'El centro devolvió un horario que no se pudo interpretar.',
+      );
+    }
   }
 }

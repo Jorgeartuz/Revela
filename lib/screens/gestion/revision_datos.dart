@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:revela/config/tema_aplicacion.dart';
-import 'package:revela/services/remote/servicio_gestion.dart';
 import 'package:revela/models/gestion/modulo_gestion.dart';
 import 'package:revela/widgets/gestion/componentes_compartidos.dart';
 import 'package:revela/models/gestion/campos_formulario.dart';
@@ -12,13 +11,11 @@ class PantallaRevisionDatos extends StatelessWidget {
     required this.values,
     required this.campos,
     required this.opciones,
-    this.servicio,
   });
   final ModuloGestion modulo;
   final Map<String, dynamic> values;
   final List<CampoFormulario> campos;
   final Map<String, List<Map<String, dynamic>>> opciones;
-  final ServicioGestion? servicio;
   @override
   Widget build(BuildContext context) => SectionShell(
     title: modulo == ModuloGestion.reservas
@@ -71,20 +68,6 @@ class PantallaRevisionDatos extends StatelessWidget {
         ],
         if (modulo == ModuloGestion.cierres) ...[
           tituloSeccion('RESUMEN DEL PERÍODO'),
-          if (servicio?.vistaPrevia == true) ...[
-            ListTile(
-              title: const Text('Total de servicios de ejemplo'),
-              trailing: Text(
-                '${servicio!.memoria[ModuloGestion.reservas]!.length}',
-              ),
-            ),
-            ListTile(
-              title: const Text('Total de profesionales de ejemplo'),
-              trailing: Text(
-                '${servicio!.memoria[ModuloGestion.profesionales]!.length}',
-              ),
-            ),
-          ],
           cuadroInformacion(
             'El sistema calculará el total y las comisiones al crear el cierre. El período no se modificará después de confirmar.',
           ),

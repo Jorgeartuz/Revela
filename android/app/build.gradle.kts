@@ -1,8 +1,14 @@
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val archivoFirma = providers.environmentVariable("REVELA_KEYSTORE_PATH").orNull
+val claveAlmacen = providers.environmentVariable("REVELA_KEYSTORE_PASSWORD").orNull
+val aliasFirma = providers.environmentVariable("REVELA_KEY_ALIAS").orNull
+val claveFirma = providers.environmentVariable("REVELA_KEY_PASSWORD").orNull
+val firmaConfigurada = listOf(archivoFirma, claveAlmacen, aliasFirma, claveFirma).all { !it.isNullOrBlank() }
 
 android {
     namespace = "co.edu.cecar.revela"
@@ -15,25 +21,41 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+
         applicationId = "co.edu.cecar.revela"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (firmaConfigurada) {
+            create("release") {
+                storeFile = file(archivoFirma!!)
+                storePassword = claveAlmacen
+                keyAlias = aliasFirma
+                keyPassword = claveFirma
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name == "packageRelease" || name == "signReleaseBundle") {
+        doFirst {
+            if (!firmaConfigurada) {
+                throw GradleException("Configura REVELA_KEYSTORE_PATH, REVELA_KEYSTORE_PASSWORD, REVELA_KEY_ALIAS y REVELA_KEY_PASSWORD para generar una versión de publicación.")
+            }
         }
     }
 }

@@ -6,14 +6,7 @@ import 'package:revela/models/gestion/valores_registro.dart';
 import 'package:revela/models/inicio/reserva.dart';
 
 typedef Registro = Map<String, dynamic>;
-EstadosReserva estadosDelServicio(ServicioGestion repo) => repo.vistaPrevia
-    ? const EstadosReserva(
-        programada: 0,
-        confirmada: 1,
-        atendida: 2,
-        cancelada: 3,
-      )
-    : EstadosReserva.configurados;
+EstadosReserva estadosDelServicio(ServicioGestion repo) => repo.estadosReserva;
 String textoHora(Object? value) {
   final time = minutosDeHora(value);
   if (time == null) return '—';

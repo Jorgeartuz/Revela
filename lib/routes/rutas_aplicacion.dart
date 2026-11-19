@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:revela/models/navegacion/argumentos_gestion.dart';
-import 'package:revela/screens/autenticacion/pantalla_recuperacion.dart';
-import 'package:revela/screens/gestion/pantalla_listado.dart';
-import 'package:revela/screens/gestion/pantalla_formulario.dart';
-import 'package:revela/screens/gestion/pantalla_detalle.dart';
-import 'package:revela/screens/pantalla_ruta_no_disponible.dart';
+import 'package:revela/screens/autenticacion/recuperacion.dart';
+import 'package:revela/screens/gestion/listado.dart';
+import 'package:revela/screens/gestion/formulario.dart';
+import 'package:revela/screens/gestion/detalle.dart';
+import 'package:revela/screens/ruta_no_disponible.dart';
 
 class RutasAplicacion {
   RutasAplicacion._();
@@ -78,9 +78,6 @@ class RutasAplicacion {
         servicio: datos.servicio,
         datosIniciales: datos.datosIniciales,
         esEdicion: datos.esEdicion,
-        mostrarErrores: datos.mostrarErrores,
-        errorInicial: datos.errorInicial,
-        accionInicial: datos.accionInicial,
       ),
     );
   }
@@ -97,7 +94,6 @@ class RutasAplicacion {
         servicio: datos.servicio,
         registro: datos.registro,
         soloLectura: datos.soloLectura,
-        accionInicial: datos.accionInicial,
       ),
     );
   }

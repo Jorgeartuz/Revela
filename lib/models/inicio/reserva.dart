@@ -71,16 +71,33 @@ class EstadosReserva {
     this.cancelada,
   });
   final int? programada, confirmada, atendida, cancelada;
-  static final configurados = EstadosReserva(
-    programada: int.tryParse(
-      const String.fromEnvironment('RESERVA_PROGRAMADA'),
-    ),
-    confirmada: int.tryParse(
-      const String.fromEnvironment('RESERVA_CONFIRMADA'),
-    ),
-    atendida: int.tryParse(const String.fromEnvironment('RESERVA_ATENDIDA')),
-    cancelada: int.tryParse(const String.fromEnvironment('RESERVA_CANCELADA')),
-  );
+  static final configurados = _validarConfiguracion();
+  static EstadosReserva _validarConfiguracion() {
+    final valores = EstadosReserva(
+      programada: int.tryParse(
+        const String.fromEnvironment('RESERVA_PROGRAMADA'),
+      ),
+      confirmada: int.tryParse(
+        const String.fromEnvironment('RESERVA_CONFIRMADA'),
+      ),
+      atendida: int.tryParse(const String.fromEnvironment('RESERVA_ATENDIDA')),
+      cancelada: int.tryParse(
+        const String.fromEnvironment('RESERVA_CANCELADA'),
+      ),
+    );
+    final codigos = [
+      valores.programada,
+      valores.confirmada,
+      valores.atendida,
+      valores.cancelada,
+    ].whereType<int>().toList();
+    if (codigos.any((codigo) => codigo < 0) ||
+        codigos.toSet().length != codigos.length) {
+      return const EstadosReserva();
+    }
+    return valores;
+  }
+
   String? label(int? value) {
     if (value == null) return null;
     if (value == programada) return 'PROGRAMADA';

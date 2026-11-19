@@ -10,8 +10,8 @@ import 'package:revela/services/remote/cliente_api.dart';
 import 'package:revela/config/tema_aplicacion.dart';
 import 'package:revela/services/remote/servicio_autenticacion.dart';
 import 'package:revela/models/login/sesion_usuario.dart';
-import 'package:revela/screens/autenticacion/pantalla_inicio_sesion.dart';
-import 'package:revela/screens/inicio/pantalla_inicio.dart';
+import 'package:revela/screens/autenticacion/inicio_sesion.dart';
+import 'package:revela/screens/inicio/inicio.dart';
 import 'package:revela/services/remote/servicio_inicio.dart';
 
 class AplicacionRevela extends StatefulWidget {

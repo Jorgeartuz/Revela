@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import 'package:revela/config/tema_aplicacion.dart';
 import 'package:revela/services/remote/servicio_gestion.dart';
 import 'package:revela/models/gestion/modulo_gestion.dart';
-import 'package:revela/models/gestion/valores_registro.dart';
 import 'package:revela/widgets/gestion/componentes_compartidos.dart';
 
 class VistaGestion extends StatefulWidget {
@@ -38,6 +37,22 @@ class _EstadoVistaGestion extends State<VistaGestion> {
   late Future<List<Registro>> _consulta;
   Future<List<Registro>>? _profesionales, _cierres;
   Future<Registro?>? _perfil;
+  bool get _necesitaPerfil =>
+      widget.modulo == ModuloGestion.horarios ||
+      (widget.modulo == ModuloGestion.inasistencias && widget.soloLectura);
+  Future<T> _observar<T>(Future<T> consulta) {
+    consulta.ignore();
+    return consulta;
+  }
+
+  void _cargarPerfil() {
+    _perfil = _necesitaPerfil && _profesionalSeleccionado != null
+        ? _observar(
+            widget.servicio.obtenerProfesional(_profesionalSeleccionado!),
+          )
+        : null;
+  }
+
   int? _profesionalSeleccionado, _cierreSeleccionado;
   int? _estadoSeleccionado;
   String _busqueda = '';
@@ -49,14 +64,14 @@ class _EstadoVistaGestion extends State<VistaGestion> {
     _cierreSeleccionado = int.tryParse(
       widget.filtros['liquidacionComisionId'] ?? '',
     );
-    if (_profesionalSeleccionado != null) {
-      _perfil = widget.servicio.obtenerProfesional(_profesionalSeleccionado!);
-    }
+    _cargarPerfil();
     if (!widget.soloLectura && widget.modulo != ModuloGestion.reservas) {
-      _profesionales = widget.servicio.listar(ModuloGestion.profesionales);
+      _profesionales = _observar(
+        widget.servicio.listar(ModuloGestion.profesionales),
+      );
     }
     if (widget.modulo == ModuloGestion.comisiones) {
-      _cierres = widget.servicio.listar(ModuloGestion.cierres);
+      _cierres = _observar(widget.servicio.listar(ModuloGestion.cierres));
     }
     _cargar();
   }
@@ -84,14 +99,14 @@ class _EstadoVistaGestion extends State<VistaGestion> {
   Future<void> _actualizar() async {
     setState(() {
       if (_profesionales != null) {
-        _profesionales = widget.servicio.listar(ModuloGestion.profesionales);
+        _profesionales = _observar(
+          widget.servicio.listar(ModuloGestion.profesionales),
+        );
       }
       if (_cierres != null) {
-        _cierres = widget.servicio.listar(ModuloGestion.cierres);
+        _cierres = _observar(widget.servicio.listar(ModuloGestion.cierres));
       }
-      if (_profesionalSeleccionado != null) {
-        _perfil = widget.servicio.obtenerProfesional(_profesionalSeleccionado!);
-      }
+      _cargarPerfil();
       _cargar();
     });
     try {
@@ -167,7 +182,7 @@ class _EstadoVistaGestion extends State<VistaGestion> {
           ],
           onChanged: (v) => setState(() {
             _profesionalSeleccionado = v;
-            _perfil = v == null ? null : widget.servicio.obtenerProfesional(v);
+            _cargarPerfil();
             _cargar();
           }),
         ),
@@ -526,7 +541,7 @@ class _EstadoVistaGestion extends State<VistaGestion> {
       'Sábado',
       'Domingo',
     ];
-    final codes = codigosDiasSemana(vistaPrevia: widget.servicio.vistaPrevia);
+    final codes = widget.servicio.diasSemana;
     Widget clockLine(String asset, String text, {bool muted = false}) =>
         Padding(
           padding: const EdgeInsets.only(top: 5),
@@ -616,7 +631,11 @@ class _EstadoVistaGestion extends State<VistaGestion> {
       if (_perfil != null)
         FutureBuilder<Registro?>(
           future: _perfil,
-          builder: (c, s) => tarjetaProfesional(s.data),
+          builder: (c, s) => s.hasError
+              ? cuadroInformacion(mensajeError(s.error))
+              : s.connectionState == ConnectionState.waiting
+              ? const LinearProgressIndicator()
+              : tarjetaProfesional(s.data),
         ),
       if (_profesionalSeleccionado == null)
         cuadroInformacion(
@@ -648,7 +667,11 @@ class _EstadoVistaGestion extends State<VistaGestion> {
       tituloSeccion('PROFESIONAL'),
       FutureBuilder<Registro?>(
         future: _perfil,
-        builder: (c, s) => tarjetaProfesional(s.data),
+        builder: (c, s) => s.hasError
+            ? cuadroInformacion(mensajeError(s.error))
+            : s.connectionState == ConnectionState.waiting
+            ? const LinearProgressIndicator()
+            : tarjetaProfesional(s.data),
       ),
     ] else if (_profesionales != null)
       _selectorProfesional(),
@@ -676,13 +699,7 @@ class _EstadoVistaGestion extends State<VistaGestion> {
         : DateUtils.dateOnly(end).difference(DateUtils.dateOnly(start)).inDays +
               1;
     final finished = end?.isBefore(DateTime.now()) ?? false;
-    final motive = widget.servicio.vistaPrevia
-        ? ['Salud', 'Familiar', 'Otra causa justificada'].elementAtOrNull(
-            r['motivo'] is int && (r['motivo'] as int) >= 0
-                ? r['motivo'] as int
-                : 3,
-          )
-        : r['motivoNombre'];
+    final motive = r['motivoNombre'];
     return tarjeta(
       InkWell(
         onTap: widget.soloLectura ? null : () => _abrirDetalle(r),
@@ -758,8 +775,11 @@ class _EstadoVistaGestion extends State<VistaGestion> {
       if (_cierres != null)
         FutureBuilder<List<Registro>>(
           future: _cierres,
-          builder: (c, s) => s.hasData
-              ? Padding(
+          builder: (c, s) => s.hasError
+              ? cuadroInformacion(mensajeError(s.error))
+              : !s.hasData
+              ? const LinearProgressIndicator()
+              : Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: DropdownButtonFormField<int>(
                     key: ValueKey(
@@ -790,8 +810,7 @@ class _EstadoVistaGestion extends State<VistaGestion> {
                       _cargar();
                     }),
                   ),
-                )
-              : const SizedBox.shrink(),
+                ),
         ),
       if (_profesionales != null) _selectorProfesional(),
       tituloSeccion('CONSOLIDADO DEL CIERRE'),

@@ -1,3 +1,4 @@
+import 'package:revela/models/inicio/catalogo_inicio.dart';
 import 'package:revela/routes/rutas_aplicacion.dart';
 import 'package:revela/models/navegacion/argumentos_gestion.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ import 'package:revela/services/remote/servicio_inicio.dart';
 import 'package:revela/models/inicio/reserva.dart';
 import 'package:revela/services/remote/servicio_gestion.dart';
 import 'package:revela/models/gestion/modulo_gestion.dart';
-import 'package:revela/screens/gestion/pantalla_listado.dart';
+import 'package:revela/screens/gestion/listado.dart';
 import 'package:revela/screens/profesional/portal_profesional.dart';
 import 'package:revela/widgets/menu/menu_administrativo.dart';
 
@@ -329,18 +330,12 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
         integrado: true,
       );
     }
-    if (_esProfesional && _pestana > 0) {
-      return _perfilPendiente(
-        title: ['Inicio', 'Mi agenda', 'Mis servicios', 'Mi horario'][_pestana],
-      );
-    }
     if (_pestana == 2 || _pestana == 3) {
       final catalogo = _pestana == 2
           ? CatalogoInicio.profesionales
           : CatalogoInicio.clientes;
       return Column(
         children: [
-          if (_pestana == 3) _tituloPagina(catalogo.title),
           Expanded(
             child: PantallaListado(
               key: ValueKey(catalogo),
@@ -365,28 +360,12 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
               if (_pestana == 0) ...[
                 _encabezado(),
                 const SizedBox(height: 28),
-                if (_esProfesional) ...[
-                  _informacionProfesional(),
-                  const SizedBox(height: 28),
-                ],
                 _indicadores(day),
                 const SizedBox(height: 28),
                 _accesosRapidos(day),
                 const SizedBox(height: 28),
-              ] else ...[
-                _tituloPagina('Agenda'),
-                const SizedBox(height: 12),
-                Text(
-                  DateFormat('EEEE, d MMMM', 'es').format(DateTime.now()),
-                  style: const TextStyle(
-                    color: ColoresAplicacion.textoSecundario,
-                  ),
-                ),
-                const SizedBox(height: 20),
               ],
-              if (_esProfesional)
-                _perfilPendiente(title: 'Próximas citas')
-              else ...[
+              ...[
                 Row(
                   children: [
                     Expanded(
@@ -429,15 +408,17 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
                     ),
                   )
                 else
-                  ...(_pestana == 0 ? day.reservas.take(3) : day.reservas).map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _TarjetaReserva(
-                        reservation: r,
-                        onOpen: () => _abrirReserva(r),
+                  ...day.reservas
+                      .take(3)
+                      .map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _TarjetaReserva(
+                            reservation: r,
+                            onOpen: () => _abrirReserva(r),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
               ],
             ],
           );
@@ -652,7 +633,7 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
                               CatalogoInicio.cierres,
                             ][i],
                           )
-                        : _mostrarPerfilPendiente(),
+                        : null,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(3, 16, 3, 14),
                       child: Column(
@@ -684,73 +665,10 @@ class _EstadoPantallaInicio extends State<PantallaInicio> {
     alAbrirModulo: _abrirModulo,
     alCerrarSesion: _cerrarSesion,
   );
-  Widget _informacionProfesional() => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: ColoresAplicacion.superficie,
-      border: Border.all(color: const Color(0x2E9CA3AF)),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Row(
-      children: [
-        const CircleAvatar(
-          backgroundColor: ColoresAplicacion.principal,
-          child: Icon(Icons.person_outline, color: ColoresAplicacion.fondo),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            widget.sesion.usuario ?? 'Profesional',
-            style: const TextStyle(fontSize: 14.5),
-          ),
-        ),
-      ],
-    ),
-  );
-  Widget _perfilPendiente({required String title}) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 21),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(title, style: _estiloSeccion),
-        const SizedBox(height: 12),
-        const Text(
-          'Tu perfil necesita completar la vinculación con el centro para consultar esta información. Contacta al administrador.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: ColoresAplicacion.textoSecundario),
-        ),
-      ],
-    ),
-  );
-  void _mostrarPerfilPendiente() => showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Mi perfil'),
-      content: const Text(
-        'Contacta al administrador para completar la vinculación de tu perfil.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Entendido'),
-        ),
-      ],
-    ),
-  );
 }
 
 const _estiloSeccion = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
-Widget _tituloPagina(String title) => Padding(
-  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 0),
-  child: Text(
-    title,
-    style: const TextStyle(
-      fontFamily: 'OpenSans',
-      fontSize: 24,
-      fontWeight: FontWeight.w600,
-    ),
-  ),
-);
+
 Widget _recurso(String name, double size, {Color? color}) => SvgPicture.asset(
   'recursos/iconos/$name.svg',
   width: size,

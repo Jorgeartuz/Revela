@@ -40,8 +40,6 @@ class _EstadoPantallaListado extends State<PantallaListado> {
   String _filtroEstado = 'todos';
   String? _especialidadSeleccionada;
   DateTimeRange? _periodo;
-  int? _esProfesional;
-  Future<List<Map<String, dynamic>>>? _profesionales;
   bool get _tieneVistaEspecifica => [
     ModuloGestion.reservas,
     ModuloGestion.horarios,
@@ -57,15 +55,6 @@ class _EstadoPantallaListado extends State<PantallaListado> {
         widget.modulo == ModuloGestion.profesionales) {
       _especialidades = widget.servicio.listar(ModuloGestion.especialidades);
     }
-    if ([
-          ModuloGestion.horarios,
-          ModuloGestion.inasistencias,
-          ModuloGestion.comisiones,
-          ModuloGestion.reservas,
-        ].contains(widget.modulo) &&
-        widget.idProfesional == null) {
-      _profesionales = widget.servicio.listar(ModuloGestion.profesionales);
-    }
   }
 
   @override
@@ -79,18 +68,13 @@ class _EstadoPantallaListado extends State<PantallaListado> {
       ...widget.filtrosIniciales,
       if (widget.idProfesional != null)
         'profesionalId': '${widget.idProfesional}',
-      if (_esProfesional != null) 'profesionalId': '$_esProfesional',
     };
     if (_periodo != null) {
-      filtros['fechaInicio'] = widget.modulo == ModuloGestion.reservas
-          ? _periodo!.start.toIso8601String()
-          : _periodo!.start.toIso8601String().split('T').first;
-      filtros['fechaFin'] = widget.modulo == ModuloGestion.reservas
-          ? _periodo!.end
-                .add(const Duration(days: 1))
-                .subtract(const Duration(microseconds: 1))
-                .toIso8601String()
-          : _periodo!.end.toIso8601String().split('T').first;
+      filtros['fechaInicio'] = _periodo!.start
+          .toIso8601String()
+          .split('T')
+          .first;
+      filtros['fechaFin'] = _periodo!.end.toIso8601String().split('T').first;
     }
     _consulta = widget.servicio.listar(widget.modulo, filtros: filtros);
   }
@@ -211,9 +195,18 @@ class _EstadoPantallaListado extends State<PantallaListado> {
           : widget.modulo == ModuloGestion.horarios
           ? 'Horario de Trabajo'
           : widget.modulo.title,
-      vistaPrevia: widget.servicio.vistaPrevia,
+
       centrarTitulo:
           widget.modulo == ModuloGestion.reservas && !widget.soloLectura,
+      actions: widget.modulo.puedeCrear && !widget.soloLectura && !specialized
+          ? [
+              IconButton(
+                tooltip: 'Crear ${widget.modulo.nombreSingular.toLowerCase()}',
+                onPressed: _formulario,
+                icon: const Icon(Icons.add),
+              ),
+            ]
+          : null,
       bottom: widget.soloLectura
           ? NavegacionProfesional(
               servicio: widget.servicio,
@@ -383,28 +376,29 @@ class _EstadoPantallaListado extends State<PantallaListado> {
           padding: const EdgeInsets.fromLTRB(21, 16, 21, 32),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.modulo.title,
-                    style: const TextStyle(
-                      fontFamily: 'OpenSans',
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
+            if (widget.integrado)
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.modulo.title,
+                      style: const TextStyle(
+                        fontFamily: 'OpenSans',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                if (widget.modulo.puedeCrear && !widget.soloLectura)
-                  IconButton.filled(
-                    tooltip:
-                        'Crear ${widget.modulo.nombreSingular.toLowerCase()}',
-                    onPressed: _formulario,
-                    icon: const Icon(Icons.add),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 20),
+                  if (widget.modulo.puedeCrear && !widget.soloLectura)
+                    IconButton.filled(
+                      tooltip:
+                          'Crear ${widget.modulo.nombreSingular.toLowerCase()}',
+                      onPressed: _formulario,
+                      icon: const Icon(Icons.add),
+                    ),
+                ],
+              ),
+            if (widget.integrado) const SizedBox(height: 20),
             TextField(
               controller: _controladorBusqueda,
               decoration: const InputDecoration(
@@ -438,74 +432,6 @@ class _EstadoPantallaListado extends State<PantallaListado> {
                           setState(() => _filtroEstado = option.key),
                     ),
                 ],
-              ),
-            if (widget.modulo == ModuloGestion.servicios ||
-                widget.modulo == ModuloGestion.profesionales)
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _especialidades,
-                builder: (context, s) => s.hasError
-                    ? cuadroInformacion(mensajeError(s.error))
-                    : s.hasData
-                    ? DropdownButtonFormField<String>(
-                        key: ValueKey(
-                          'specialty:$_especialidadSeleccionada:${s.data!.map((r) => r['id']).join(',')}',
-                        ),
-                        initialValue:
-                            s.data!.any(
-                              (r) => '${r['id']}' == _especialidadSeleccionada,
-                            )
-                            ? _especialidadSeleccionada
-                            : null,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Especialidad',
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('Todas'),
-                          ),
-                          for (final r in s.data!)
-                            DropdownMenuItem(
-                              value: '${r['id']}',
-                              child: Text(nombreRegistro(r)),
-                            ),
-                        ],
-                        onChanged: (v) =>
-                            setState(() => _especialidadSeleccionada = v),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            if (_profesionales != null)
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _profesionales,
-                builder: (context, s) => s.hasData
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _esProfesional,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Profesional',
-                          ),
-                          items: [
-                            const DropdownMenuItem(
-                              value: null,
-                              child: Text('Todos'),
-                            ),
-                            for (final r in s.data!)
-                              DropdownMenuItem(
-                                value: r['id'] as int,
-                                child: Text(nombreRegistro(r)),
-                              ),
-                          ],
-                          onChanged: (v) => setState(() {
-                            _esProfesional = v;
-                            _cargar();
-                          }),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
               ),
             if ([
               ModuloGestion.reservas,
@@ -567,7 +493,6 @@ class _EstadoPantallaListado extends State<PantallaListado> {
                       _busqueda = '';
                       _filtroEstado = 'todos';
                       _especialidadSeleccionada = null;
-                      _esProfesional = null;
                       _periodo = null;
                       _cargar();
                     }),
@@ -587,7 +512,7 @@ class _EstadoPantallaListado extends State<PantallaListado> {
                 (registro) => RecordCard(
                   modulo: widget.modulo,
                   registro: registro,
-                  vistaPrevia: widget.servicio.vistaPrevia,
+
                   onTap: () => _abrirDetalle(registro),
                 ),
               ),
