@@ -75,14 +75,14 @@ class EstadosReserva {
   static EstadosReserva _validarConfiguracion() {
     final valores = EstadosReserva(
       programada: int.tryParse(
-        const String.fromEnvironment('RESERVA_PROGRAMADA'),
+        const String.fromEnvironment('RESERVA_PROGRAMADA', defaultValue: '0'),
       ),
       confirmada: int.tryParse(
         const String.fromEnvironment('RESERVA_CONFIRMADA'),
       ),
       atendida: int.tryParse(const String.fromEnvironment('RESERVA_ATENDIDA')),
       cancelada: int.tryParse(
-        const String.fromEnvironment('RESERVA_CANCELADA'),
+        const String.fromEnvironment('RESERVA_CANCELADA', defaultValue: '1'),
       ),
     );
     final codigos = [

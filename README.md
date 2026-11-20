@@ -30,6 +30,10 @@ Las credenciales se introducen en el inicio de sesión. El token se conserva en 
 
 El acceso profesional requiere confirmar `PROFESSIONAL_ROLE` y `PROFESSIONAL_ID_CLAIM`. Los códigos del servidor se configuran con `WEEKDAY_MAP`, `ABSENCE_HEALTH`, `ABSENCE_FAMILY`, `ABSENCE_OTHER`, `RESERVA_PROGRAMADA`, `RESERVA_CONFIRMADA`, `RESERVA_ATENDIDA` y `RESERVA_CANCELADA` mediante `--dart-define`.
 
+Las reservas nuevas se muestran como programadas: el valor inicial observado en la API es `estado: 0`. Ese código se utiliza por defecto para `RESERVA_PROGRAMADA`. Los demás estados conservan su configuración independiente.
+
+El estado `1` corresponde a Cancelada, verificado al cancelar una reserva programada desde Bruno. Se utiliza por defecto para `RESERVA_CANCELADA`. El significado de los demás códigos sigue pendiente de confirmar.
+
 La recuperación automática de contraseña, la confirmación de asistencia, el registro de pagos y la reactivación de especialidades requieren soporte del servidor. La aplicación no simula operaciones exitosas para estas funciones.
 
 El formulario de reservas consulta los horarios reales de la API y permite elegir uno. La revisión de datos permite crear una reserva o guardar sus cambios; no confirma un estado en el servidor. El administrador puede solicitar edición o cancelación aunque la etiqueta del estado no esté identificada, y la API valida si la operación está permitida. Los formularios de horarios e inasistencias indican cuándo falta su configuración.
