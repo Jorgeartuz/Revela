@@ -32,7 +32,9 @@ El acceso profesional requiere confirmar `PROFESSIONAL_ROLE` y `PROFESSIONAL_ID_
 
 La recuperación automática de contraseña, la confirmación de asistencia, el registro de pagos y la reactivación de especialidades requieren soporte del servidor. La aplicación no simula operaciones exitosas para estas funciones.
 
-El formulario de reservas consulta los horarios reales de la API y permite elegir uno. Las reservas con estado sin identificar no ofrecen edición ni cancelación. Los formularios de horarios e inasistencias indican cuándo falta su configuración.
+El formulario de reservas consulta los horarios reales de la API y permite elegir uno. La revisión de datos permite crear una reserva o guardar sus cambios; no confirma un estado en el servidor. El administrador puede solicitar edición o cancelación aunque la etiqueta del estado no esté identificada, y la API valida si la operación está permitida. Los formularios de horarios e inasistencias indican cuándo falta su configuración.
+
+El resumen del profesional muestra cantidad de servicios, base y comisión estimada cuando se pueden identificar las reservas atendidas. La hora de fin no se utiliza como prueba de que el servicio fue realizado. Los importes definitivos de los cierres se leen del servidor: total facturado, comisión del negocio y comisión de profesionales.
 
 ## Publicar en Android
 

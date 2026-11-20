@@ -11,7 +11,7 @@ class PantallaOperacionExitosa extends StatelessWidget {
   final String title, message;
   @override
   Widget build(BuildContext context) => SectionShell(
-    title: 'Confirmación',
+    title: 'Operación completada',
     child: SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(

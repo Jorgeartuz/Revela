@@ -174,7 +174,7 @@ class AgendaAdministrativa extends StatelessWidget {
             ],
             Flexible(
               child: Text(
-                estado ?? 'Por confirmar',
+                estado ?? 'Sin identificar',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

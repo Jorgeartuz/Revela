@@ -248,6 +248,7 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
             values: _valores,
             campos: _campos,
             opciones: _opciones,
+            esEdicion: widget.esEdicion,
           ),
         ),
       );
@@ -329,7 +330,7 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
     child: SectionShell(
       title: widget.esEdicion
           ? (widget.modulo == ModuloGestion.reservas
-                ? 'Reagendar Reserva'
+                ? 'Editar reserva'
                 : 'Editar ${widget.modulo.nombreSingular}')
           : switch (widget.modulo) {
               ModuloGestion.horarios => 'Configurar Horario',
@@ -492,7 +493,9 @@ class _EstadoPantallaFormulario extends State<PantallaFormulario> {
     alPulsar: _bloqueoConfiguracion == null ? _guardar : null,
     cargando: _guardando,
     texto: widget.modulo == ModuloGestion.reservas
-        ? 'Confirmar Reserva'
+        ? widget.esEdicion
+              ? 'Revisar cambios'
+              : 'Revisar reserva'
         : widget.modulo == ModuloGestion.cierres
         ? 'Revisar y crear cierre'
         : 'Guardar ${widget.modulo.nombreSingular.toLowerCase()}',

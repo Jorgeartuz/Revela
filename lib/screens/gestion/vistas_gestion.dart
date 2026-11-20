@@ -450,7 +450,7 @@ class _EstadoVistaGestion extends State<VistaGestion> {
                     ),
                     Text(
                       states.label(r['estado'] as int?) ??
-                          'Estado por confirmar',
+                          'Estado sin identificar',
                       style: const TextStyle(
                         fontSize: 10,
                         color: ColoresAplicacion.principal,
@@ -813,7 +813,11 @@ class _EstadoVistaGestion extends State<VistaGestion> {
                 ),
         ),
       if (_profesionales != null) _selectorProfesional(),
-      tituloSeccion('CONSOLIDADO DEL CIERRE'),
+      tituloSeccion(
+        _cierreSeleccionado == null
+            ? 'CONSOLIDADO DE COMISIONES'
+            : 'CONSOLIDADO DEL CIERRE',
+      ),
       tarjeta(
         resumenTotales([
           ('Servicios', '${sum('cantidadServicios') ?? '—'}'),
@@ -822,7 +826,7 @@ class _EstadoVistaGestion extends State<VistaGestion> {
         ]),
         accent: true,
       ),
-      tituloSeccion('${registros.length} PROFESIONALES'),
+      tituloSeccion('${registros.length} COMISIONES'),
       if (registros.isEmpty)
         _estadoVacio(
           'Sin comisiones',

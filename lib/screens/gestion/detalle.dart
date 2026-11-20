@@ -206,8 +206,15 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
     if (modulo == ModuloGestion.cierres) {
       add('Desde', formatoFecha(registro['fechaInicio']));
       add('Hasta', formatoFecha(registro['fechaFin']));
-      add('Total del cierre', formatoMoneda(registro['total']));
-      add('Servicios', registro['cantidadServicios']);
+      add('Total facturado', formatoMoneda(registro['totalFacturado']));
+      add(
+        'Comisión del negocio',
+        formatoMoneda(registro['subtotalComisionNegocio']),
+      );
+      add(
+        'Comisión de profesionales',
+        formatoMoneda(registro['subtotalComisionProfesionales']),
+      );
     }
     if (modulo == ModuloGestion.comisiones) {
       add('Profesional', nombrePersona(registro['profesional']));
@@ -216,9 +223,6 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
       add('Comisión', '${registro['porcentaje'] ?? '—'}%');
       add('Valor de comisión', formatoMoneda(registro['valorComision']));
     }
-    final completed = status == 'ATENDIDA' || status == 'CANCELADA';
-    final puedeCambiar =
-        modulo != ModuloGestion.reservas || (status != null && !completed);
     return SectionShell(
       title: 'Detalle de ${modulo.nombreSingular}',
 
@@ -331,12 +335,12 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
             ),
           const SizedBox(height: 24),
           if (_procesando) const Center(child: CircularProgressIndicator()),
-          if (!widget.soloLectura && modulo.puedeEditar && puedeCambiar)
+          if (!widget.soloLectura && modulo.puedeEditar)
             FilledButton(
               onPressed: _procesando ? null : _editar,
               child: Text(
                 modulo == ModuloGestion.reservas
-                    ? 'Reagendar'
+                    ? 'Editar reserva'
                     : 'Editar ${modulo.nombreSingular.toLowerCase()}',
               ),
             ),
@@ -362,7 +366,7 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
               child: const Text('Ver comisiones del cierre'),
             ),
           ],
-          if (!widget.soloLectura && modulo.puedeEliminar && puedeCambiar) ...[
+          if (!widget.soloLectura && modulo.puedeEliminar) ...[
             const SizedBox(height: 12),
             OutlinedButton(
               style: OutlinedButton.styleFrom(
@@ -376,10 +380,6 @@ class _EstadoPantallaDetalle extends State<PantallaDetalle> {
               ),
             ),
           ],
-          if (modulo == ModuloGestion.reservas && status == null)
-            cuadroInformacion(
-              'El estado de esta reserva todavía no está identificado. Por seguridad, no se puede modificar ni cancelar desde la aplicación.',
-            ),
           if (widget.soloLectura && modulo == ModuloGestion.reservas)
             OutlinedButton(
               onPressed: () => Navigator.pop(context),

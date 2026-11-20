@@ -34,7 +34,7 @@ Map<String, dynamic> prepararDatosEnvio(
         'La fecha y el horario de la reserva no son válidos.',
       );
     }
-    if (fechaSeleccionada.isBefore(DateTime.now())) {
+    if (!esEdicion && fechaSeleccionada.isBefore(DateTime.now())) {
       throw const ErrorGestion(
         'La reserva debe ser para una fecha y hora futuras.',
       );

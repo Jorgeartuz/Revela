@@ -11,15 +11,19 @@ class PantallaRevisionDatos extends StatelessWidget {
     required this.values,
     required this.campos,
     required this.opciones,
+    this.esEdicion = false,
   });
   final ModuloGestion modulo;
   final Map<String, dynamic> values;
   final List<CampoFormulario> campos;
   final Map<String, List<Map<String, dynamic>>> opciones;
+  final bool esEdicion;
   @override
   Widget build(BuildContext context) => SectionShell(
     title: modulo == ModuloGestion.reservas
-        ? 'Confirmación de Reserva'
+        ? esEdicion
+              ? 'Revisar cambios de reserva'
+              : 'Revisar reserva'
         : 'Resumen del Cierre',
     child: ListView(
       padding: const EdgeInsets.all(21),
@@ -77,7 +81,9 @@ class PantallaRevisionDatos extends StatelessWidget {
           onPressed: () => Navigator.pop(context, true),
           child: Text(
             modulo == ModuloGestion.reservas
-                ? 'Confirmar y crear reserva'
+                ? esEdicion
+                      ? 'Guardar cambios'
+                      : 'Crear reserva'
                 : 'Confirmar y crear cierre',
           ),
         ),

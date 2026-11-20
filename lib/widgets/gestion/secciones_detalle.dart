@@ -24,7 +24,7 @@ class SeccionesReserva extends StatelessWidget {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Chip(label: Text(status ?? 'Estado por confirmar')),
+          child: Chip(label: Text(status ?? 'Estado sin identificar')),
         ),
         tituloSeccion('CLIENTE'),
         tarjeta(
@@ -64,13 +64,9 @@ class SeccionesReserva extends StatelessWidget {
           ),
         ),
         if (status == 'CANCELADA')
-          cuadroInformacion(
-            'Esta reserva fue cancelada. No admite más acciones.',
-          ),
+          cuadroInformacion('Esta reserva figura como cancelada.'),
         if (status == 'ATENDIDA')
-          cuadroInformacion(
-            'Este servicio ya fue atendido. La reserva no admite más cambios.',
-          ),
+          cuadroInformacion('Esta reserva figura como atendida.'),
       ],
     );
   }
@@ -208,7 +204,7 @@ class _EstadoSeccionesLiquidacion extends State<SeccionesLiquidacion> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      formatoMoneda(r['total']),
+                      formatoMoneda(r['totalFacturado']),
                       style: const TextStyle(
                         fontSize: 28,
                         color: ColoresAplicacion.principal,
@@ -216,8 +212,25 @@ class _EstadoSeccionesLiquidacion extends State<SeccionesLiquidacion> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    filaDato(
+                      'Comisión del negocio',
+                      formatoMoneda(r['subtotalComisionNegocio']),
+                    ),
+                    filaDato(
+                      'Comisión de profesionales',
+                      formatoMoneda(r['subtotalComisionProfesionales']),
+                    ),
                     resumenTotales([
-                      ('Servicios', '${r['cantidadServicios'] ?? '—'}'),
+                      (
+                        'Servicios',
+                        !s.hasData ||
+                                registros.any(
+                                  (registro) =>
+                                      registro['cantidadServicios'] is! int,
+                                )
+                            ? '—'
+                            : '${registros.fold<int>(0, (total, registro) => total + (registro['cantidadServicios'] as int))}',
+                      ),
                       (
                         'Profesionales',
                         s.hasData ? '${registros.length}' : '—',
